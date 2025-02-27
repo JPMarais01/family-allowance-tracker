@@ -41,9 +41,10 @@ The application aims to:
    - Summary generation for allowance determination
 
 5. **Dashboards**
-   - Parent dashboard with scoring controls
-   - Child dashboard showing personal progress
-   - Visual representations of performance trends
+
+- Parent dashboard with scoring controls
+- Child dashboard showing personal progress
+- Visual representations of performance trends
 
 ### Additional Features (Future Development)
 
@@ -56,10 +57,6 @@ The application aims to:
 
    - Daily reminders to input scores
    - End-of-cycle summary alerts
-
-3. **Export Functionality**
-   - Download monthly reports as PDF
-   - Export historical data
 
 ## Technology Stack
 
