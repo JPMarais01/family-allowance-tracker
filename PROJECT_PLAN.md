@@ -18,29 +18,29 @@ The application aims to:
 
 1. **User Authentication**
 
-   - Secure login for parents with admin privileges
-   - Simple login for children with limited view access
-   - Password protection for family data
+- Secure login for parents with admin privileges
+- Simple login for children with limited view access
+- Password protection for family data
 
-2. **Daily Scoring System**
+1. **Daily Scoring System**
 
-   - 1-5 rating scale for each child
-   - Optional notes field for context
-   - Visual indicators of scoring trends
+- 1-5 rating scale for each child
+- Optional notes field for context
+- Visual indicators of scoring trends
 
-3. **Vacation Day Management**
+1. **Vacation Day Management**
 
-   - Mark days as "vacation" with a default score (3)
-   - Bulk selection for longer vacation periods
-   - Visual differentiation of vacation days in the calendar
+- Mark days as "vacation" with a default score (3)
+- Bulk selection for longer vacation periods
+- Visual differentiation of vacation days in the calendar
 
-4. **Custom Budget Cycle**
+1. **Custom Budget Cycle**
 
-   - Monthly periods from 25th to 24th of next month
-   - Automatic calculation of monthly averages
-   - Summary generation for allowance determination
+- Monthly periods from 25th to 24th of next month
+- Automatic calculation of monthly averages
+- Summary generation for allowance determination
 
-5. **Dashboards**
+1. **Dashboards**
 
 - Parent dashboard with scoring controls
 - Child dashboard showing personal progress
@@ -50,13 +50,13 @@ The application aims to:
 
 1. **Achievement System**
 
-   - Badges for consistent good scores
-   - Milestone recognition
+- Badges for consistent good scores
+- Milestone recognition
 
-2. **Notification System**
+1. **Notification System**
 
-   - Daily reminders to input scores
-   - End-of-cycle summary alerts
+- Daily reminders to input scores
+- End-of-cycle summary alerts
 
 ## Technology Stack
 
