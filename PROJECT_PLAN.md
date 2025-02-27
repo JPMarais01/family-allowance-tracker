@@ -141,7 +141,7 @@ family-allowance-tracker/
 
 ### Phase 1: Project Setup and Foundation
 
-1. **Initialize React Application**
+1. **Initialize React Application** - COMPLETED
 
 - Title: Set up React application with Vite
 - Description: Create a new React application using Vite for fast development and modern tooling.
@@ -152,7 +152,7 @@ cd family-allowance-tracker
 npm install
 ```
 
-2. **Install Core Dependencies**
+2. **Install Core Dependencies** - COMPLETED
 
 - Title: Add essential packages and dependencies
 - Description: Install all required packages for UI, routing, state management, and data visualization.
