@@ -17,21 +17,25 @@ The application aims to:
 ### Core Features
 
 1. **User Authentication**
+
    - Secure login for parents with admin privileges
    - Simple login for children with limited view access
    - Password protection for family data
 
 2. **Daily Scoring System**
+
    - 1-5 rating scale for each child
    - Optional notes field for context
    - Visual indicators of scoring trends
 
 3. **Vacation Day Management**
+
    - Mark days as "vacation" with a default score (3)
    - Bulk selection for longer vacation periods
    - Visual differentiation of vacation days in the calendar
 
 4. **Custom Budget Cycle**
+
    - Monthly periods from 25th to 24th of next month
    - Automatic calculation of monthly averages
    - Summary generation for allowance determination
@@ -44,10 +48,12 @@ The application aims to:
 ### Additional Features (Future Development)
 
 1. **Achievement System**
+
    - Badges for consistent good scores
    - Milestone recognition
 
 2. **Notification System**
+
    - Daily reminders to input scores
    - End-of-cycle summary alerts
 
@@ -169,12 +175,12 @@ npm install @supabase/supabase-js react-query date-fns recharts
 
 ```javascript
 // src/lib/supabase.js
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
 4. **Create Database Schema**
@@ -236,33 +242,33 @@ ALTER TABLE daily_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policies for families
-CREATE POLICY "Families are viewable by owners" 
-    ON families FOR SELECT 
+CREATE POLICY "Families are viewable by owners"
+    ON families FOR SELECT
     USING (auth.uid() = owner_id);
 
-CREATE POLICY "Families are insertable by authenticated users" 
-    ON families FOR INSERT 
+CREATE POLICY "Families are insertable by authenticated users"
+    ON families FOR INSERT
     WITH CHECK (auth.uid() = owner_id);
 
-CREATE POLICY "Families are updatable by owners" 
-    ON families FOR UPDATE 
+CREATE POLICY "Families are updatable by owners"
+    ON families FOR UPDATE
     USING (auth.uid() = owner_id);
 
-CREATE POLICY "Family members viewable by family members" 
-    ON family_members FOR SELECT 
+CREATE POLICY "Family members viewable by family members"
+    ON family_members FOR SELECT
     USING (
         family_id IN (
         SELECT family_id FROM family_members WHERE user_id = auth.uid()
         )
     );
 
-CREATE POLICY "Daily scores viewable by family based on role" 
-    ON daily_scores FOR SELECT 
+CREATE POLICY "Daily scores viewable by family based on role"
+    ON daily_scores FOR SELECT
     USING (
         -- Parents can see all scores for their family
         EXISTS (
-        SELECT 1 FROM family_members fm 
-        WHERE fm.user_id = auth.uid() 
+        SELECT 1 FROM family_members fm
+        WHERE fm.user_id = auth.uid()
         AND fm.role = 'parent'
         AND fm.family_id = (
             SELECT family_id FROM family_members WHERE id = member_id
@@ -295,25 +301,25 @@ on:
 jobs:
     build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
         - name: Checkout
         uses: actions/checkout@v3
-        
+
         - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
             node-version: 18
-            
+
         - name: Install Dependencies
         run: npm ci
-        
+
         - name: Build
         run: npm run build
         env:
             VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-            
+
         - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
@@ -343,9 +349,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // Initial session check
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         // Fetch the user's role from family_members
         const { data, error } = await supabase
@@ -353,43 +361,41 @@ export function AuthProvider({ children }) {
           .select('*')
           .eq('user_id', session.user.id)
           .single();
-          
+
         if (!error && data) {
           setUserRole(data.role);
           setFamilyMember(data);
         }
       }
-      
+
       setLoading(false);
     };
-    
+
     checkSession();
 
     // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch the user's role when auth state changes
-          const { data, error } = await supabase
-            .from('family_members')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
-            
-          if (!error && data) {
-            setUserRole(data.role);
-            setFamilyMember(data);
-          }
-        } else {
-          setUserRole(null);
-          setFamilyMember(null);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Fetch the user's role when auth state changes
+        const { data, error } = await supabase
+          .from('family_members')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (!error && data) {
+          setUserRole(data.role);
+          setFamilyMember(data);
         }
-        
-        setLoading(false);
+      } else {
+        setUserRole(null);
+        setFamilyMember(null);
       }
-    );
+
+      setLoading(false);
+    });
 
     return () => {
       authListener?.unsubscribe();
@@ -397,21 +403,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = {
-    signUp: (data) => supabase.auth.signUp(data),
-    signIn: (data) => supabase.auth.signInWithPassword(data),
+    signUp: data => supabase.auth.signUp(data),
+    signIn: data => supabase.auth.signInWithPassword(data),
     signOut: () => supabase.auth.signOut(),
     user,
     userRole,
     familyMember,
     isParent: userRole === 'parent',
-    isChild: userRole === 'child'
+    isChild: userRole === 'child',
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -442,45 +444,45 @@ export function useFamily() {
         .select('*')
         .eq('id', familyMember.family_id)
         .single();
-      
+
       if (error) throw error;
       return data;
     }
-    
+
     return null;
   };
 
   const getFamilyMembers = async () => {
     if (!familyMember) return [];
-    
+
     let query = supabase
       .from('family_members')
       .select('*')
       .eq('family_id', familyMember.family_id)
       .order('name');
-    
+
     // For parent users, get all family members
     // For child users, only get themselves
     if (userRole === 'child') {
       query = query.eq('id', familyMember.id);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return data;
   };
 
-  const addFamilyMember = async (memberData) => {
+  const addFamilyMember = async memberData => {
     // First create user account with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: memberData.email,
       password: memberData.password,
-      email_confirm: true
+      email_confirm: true,
     });
-    
+
     if (authError) throw authError;
-    
+
     // Then create family_member record with role
     const { data, error } = await supabase
       .from('family_members')
@@ -489,10 +491,10 @@ export function useFamily() {
         family_id: memberData.family_id,
         name: memberData.name,
         role: memberData.role,
-        base_allowance: memberData.base_allowance || 0
+        base_allowance: memberData.base_allowance || 0,
       })
       .select();
-    
+
     if (error) throw error;
     return data;
   };
@@ -516,7 +518,7 @@ export function useFamily() {
     parents: familyMembers.data?.filter(m => m.role === 'parent') || [],
     addFamilyMember: addMemberMutation.mutate,
     isAddingMember: addMemberMutation.isLoading,
-    currentMember: familyMember
+    currentMember: familyMember,
   };
 }
 ```
@@ -536,26 +538,24 @@ export function useScores(memberId) {
 
   const getScores = async ({ queryKey }) => {
     const [_, memberId, startDate, endDate] = queryKey;
-    
-    let query = supabase
-      .from('daily_scores')
-      .select('*');
-      
+
+    let query = supabase.from('daily_scores').select('*');
+
     if (memberId) {
       query = query.eq('member_id', memberId);
     }
-    
+
     if (startDate && endDate) {
       query = query.gte('date', startDate).lte('date', endDate);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return data;
   };
 
-  const addScore = async (scoreData) => {
+  const addScore = async scoreData => {
     // Check if score already exists for this day
     const { data: existing } = await supabase
       .from('daily_scores')
@@ -563,7 +563,7 @@ export function useScores(memberId) {
       .eq('member_id', scoreData.member_id)
       .eq('date', scoreData.date)
       .single();
-    
+
     if (existing) {
       // Update existing score
       const { data, error } = await supabase
@@ -571,31 +571,24 @@ export function useScores(memberId) {
         .update({
           score: scoreData.score,
           is_vacation: scoreData.is_vacation || false,
-          notes: scoreData.notes
+          notes: scoreData.notes,
         })
         .eq('id', existing.id)
         .select();
-      
+
       if (error) throw error;
       return data;
     } else {
       // Insert new score
-      const { data, error } = await supabase
-        .from('daily_scores')
-        .insert(scoreData)
-        .select();
-      
+      const { data, error } = await supabase.from('daily_scores').insert(scoreData).select();
+
       if (error) throw error;
       return data;
     }
   };
 
   // Queries and mutations
-  const scores = useQuery(
-    ['scores', memberId], 
-    getScores, 
-    { enabled: !!memberId }
-  );
+  const scores = useQuery(['scores', memberId], getScores, { enabled: !!memberId });
 
   const addScoreMutation = useMutation(addScore, {
     onSuccess: () => {
@@ -607,7 +600,7 @@ export function useScores(memberId) {
     scores: scores.data || [],
     isLoadingScores: scores.isLoading,
     addScore: addScoreMutation.mutate,
-    isAddingScore: addScoreMutation.isLoading
+    isAddingScore: addScoreMutation.isLoading,
   };
 }
 ```
@@ -620,102 +613,114 @@ export function useScores(memberId) {
 ```jsx
 // src/components/scoring/ScoreCalendar.jsx
 import { useState } from 'react';
-import { 
-    Box, Grid, Text, Flex, Button, 
-    Modal, ModalOverlay, ModalContent, 
-    ModalHeader, ModalBody, ModalFooter, useDisclosure 
+import {
+  Box,
+  Grid,
+  Text,
+  Flex,
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDate, isSameDay } from 'date-fns';
 import DailyScoreCard from './DailyScoreCard';
 import { useScores } from '../../hooks/useScores';
 
 export default function ScoreCalendar({ childId, month }) {
-    const [selectedDate, setSelectedDate] = useState(null);
-    const { isOpen, onOpen, onClose } = useDisclosure();
-    const { scores, isLoadingScores } = useScores(childId);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { scores, isLoadingScores } = useScores(childId);
 
-    // Generate calendar days
-    const monthStart = startOfMonth(month);
-    const monthEnd = endOfMonth(month);
-    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // Generate calendar days
+  const monthStart = startOfMonth(month);
+  const monthEnd = endOfMonth(month);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    // Find score for a specific day
-    const getScoreForDay = (day) => {
+  // Find score for a specific day
+  const getScoreForDay = day => {
     return scores.find(score => isSameDay(new Date(score.date), day));
-    };
+  };
 
-    // Handle day click
-    const handleDayClick = (day) => {
+  // Handle day click
+  const handleDayClick = day => {
     setSelectedDate(day);
     onOpen();
-    };
+  };
 
-    return (
+  return (
     <Box>
-        <Text fontSize="xl" fontWeight="bold" mb={4}>
+      <Text fontSize="xl" fontWeight="bold" mb={4}>
         {format(month, 'MMMM yyyy')}
-        </Text>
-        
-        <Grid templateColumns="repeat(7, 1fr)" gap={2}>
+      </Text>
+
+      <Grid templateColumns="repeat(7, 1fr)" gap={2}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <Box key={day} textAlign="center" fontWeight="bold" py={2}>
+          <Box key={day} textAlign="center" fontWeight="bold" py={2}>
             {day}
-            </Box>
+          </Box>
         ))}
-        
+
         {days.map(day => {
-            const score = getScoreForDay(day);
-            const isVacation = score?.is_vacation;
-            
-            return (
-            <Box 
-                key={day.toString()}
-                bg={score ? 
-                (isVacation ? 'blue.100' : `green.${100 + score.score * 100}`) : 
-                'gray.100'
-                }
-                borderRadius="md"
-                p={2}
-                textAlign="center"
-                cursor="pointer"
-                onClick={() => handleDayClick(day)}
+          const score = getScoreForDay(day);
+          const isVacation = score?.is_vacation;
+
+          return (
+            <Box
+              key={day.toString()}
+              bg={
+                score ? (isVacation ? 'blue.100' : `green.${100 + score.score * 100}`) : 'gray.100'
+              }
+              borderRadius="md"
+              p={2}
+              textAlign="center"
+              cursor="pointer"
+              onClick={() => handleDayClick(day)}
             >
-                <Text>{getDate(day)}</Text>
-                {score && (
+              <Text>{getDate(day)}</Text>
+              {score && (
                 <Flex justify="center" align="center" mt={1}>
-                    <Text fontWeight="bold">{score.score}</Text>
-                    {isVacation && <Text ml={1} fontSize="xs">(V)</Text>}
+                  <Text fontWeight="bold">{score.score}</Text>
+                  {isVacation && (
+                    <Text ml={1} fontSize="xs">
+                      (V)
+                    </Text>
+                  )}
                 </Flex>
-                )}
+              )}
             </Box>
-            );
+          );
         })}
-        </Grid>
-        
-        {/* Score entry modal */}
-        <Modal isOpen={isOpen} onClose={onClose}>
+      </Grid>
+
+      {/* Score entry modal */}
+      <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-            <ModalHeader>
-            {selectedDate && format(selectedDate, 'MMMM d, yyyy')}
-            </ModalHeader>
-            <ModalBody>
+          <ModalHeader>{selectedDate && format(selectedDate, 'MMMM d, yyyy')}</ModalHeader>
+          <ModalBody>
             {selectedDate && (
-                <DailyScoreCard 
-                childId={childId} 
-                date={selectedDate} 
+              <DailyScoreCard
+                childId={childId}
+                date={selectedDate}
                 existingScore={getScoreForDay(selectedDate)}
                 onSaved={onClose}
-                />
+              />
             )}
-            </ModalBody>
-            <ModalFooter>
-            <Button variant="ghost" onClick={onClose}>Close</Button>
-            </ModalFooter>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={onClose}>
+              Close
+            </Button>
+          </ModalFooter>
         </ModalContent>
-        </Modal>
+      </Modal>
     </Box>
-    );
+  );
 }
 ```
 
@@ -728,61 +733,68 @@ export default function ScoreCalendar({ childId, month }) {
 
 ```javascript
 // src/lib/dateUtils.js
-import { 
-    addMonths, subMonths, getDate, setDate, 
-    isAfter, isBefore, isEqual, format 
+import {
+  addMonths,
+  subMonths,
+  getDate,
+  setDate,
+  isAfter,
+  isBefore,
+  isEqual,
+  format,
 } from 'date-fns';
 
 // Get the start and end dates for a budget cycle
 export function getBudgetCycleDates(year, month, cycleStartDay = 25) {
-    const cycleStart = setDate(new Date(year, month - 1), cycleStartDay);
-    
-    // If the current date is before the cycle start day in the selected month,
-    // the cycle actually started in the previous month
-    const now = new Date();
-    if (getDate(now) < cycleStartDay && now.getMonth() === month - 1 && now.getFullYear() === year) {
+  const cycleStart = setDate(new Date(year, month - 1), cycleStartDay);
+
+  // If the current date is before the cycle start day in the selected month,
+  // the cycle actually started in the previous month
+  const now = new Date();
+  if (getDate(now) < cycleStartDay && now.getMonth() === month - 1 && now.getFullYear() === year) {
     return {
-        start: setDate(subMonths(new Date(year, month - 1), 1), cycleStartDay),
-        end: setDate(new Date(year, month - 1), cycleStartDay - 1)
+      start: setDate(subMonths(new Date(year, month - 1), 1), cycleStartDay),
+      end: setDate(new Date(year, month - 1), cycleStartDay - 1),
     };
-    }
-    
-    return {
+  }
+
+  return {
     start: cycleStart,
-    end: setDate(addMonths(cycleStart, 1), cycleStartDay - 1)
-    };
+    end: setDate(addMonths(cycleStart, 1), cycleStartDay - 1),
+  };
 }
 
 // Get the current budget cycle dates
 export function getCurrentBudgetCycle(cycleStartDay = 25) {
-    const today = new Date();
-    const thisMonth = today.getMonth() + 1;
-    const thisYear = today.getFullYear();
-    
-    // If today is before the cycle start day, the current cycle started last month
-    if (getDate(today) < cycleStartDay) {
+  const today = new Date();
+  const thisMonth = today.getMonth() + 1;
+  const thisYear = today.getFullYear();
+
+  // If today is before the cycle start day, the current cycle started last month
+  if (getDate(today) < cycleStartDay) {
     return getBudgetCycleDates(
-        thisMonth === 1 ? thisYear - 1 : thisYear,
-        thisMonth === 1 ? 12 : thisMonth - 1,
-        cycleStartDay
+      thisMonth === 1 ? thisYear - 1 : thisYear,
+      thisMonth === 1 ? 12 : thisMonth - 1,
+      cycleStartDay
     );
-    }
-    
-    // Otherwise it started this month
-    return getBudgetCycleDates(thisYear, thisMonth, cycleStartDay);
+  }
+
+  // Otherwise it started this month
+  return getBudgetCycleDates(thisYear, thisMonth, cycleStartDay);
 }
 
 // Check if a date is within a given budget cycle
 export function isDateInBudgetCycle(date, cycleYear, cycleMonth, cycleStartDay = 25) {
-    const { start, end } = getBudgetCycleDates(cycleYear, cycleMonth, cycleStartDay);
-    return (isAfter(date, start) || isEqual(date, start)) && 
-            (isBefore(date, end) || isEqual(date, end));
+  const { start, end } = getBudgetCycleDates(cycleYear, cycleMonth, cycleStartDay);
+  return (
+    (isAfter(date, start) || isEqual(date, start)) && (isBefore(date, end) || isEqual(date, end))
+  );
 }
 
 // Format a budget cycle for display (e.g., "Jan 25 - Feb 24, 2025")
 export function formatBudgetCycle(cycleYear, cycleMonth, cycleStartDay = 25) {
-    const { start, end } = getBudgetCycleDates(cycleYear, cycleMonth, cycleStartDay);
-    return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+  const { start, end } = getBudgetCycleDates(cycleYear, cycleMonth, cycleStartDay);
+  return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
 }
 ```
 
@@ -794,10 +806,24 @@ export function formatBudgetCycle(cycleYear, cycleMonth, cycleStartDay = 25) {
 ```jsx
 // src/components/summary/MonthlySummary.jsx
 import { useState, useEffect } from 'react';
-import { 
-    Box, Heading, Table, Thead, Tbody, Tr, Th, Td, 
-    Text, Select, HStack, Stat, StatLabel, StatNumber, 
-    StatHelpText, SimpleGrid, Divider 
+import {
+  Box,
+  Heading,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Text,
+  Select,
+  HStack,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  SimpleGrid,
+  Divider,
 } from '@chakra-ui/react';
 import { format, getYear, getMonth } from 'date-fns';
 import { useScores } from '../../hooks/useScores';
@@ -806,155 +832,154 @@ import { getBudgetCycleDates, formatBudgetCycle } from '../../lib/dateUtils';
 import { calculateAllowance } from '../../lib/scoreUtils';
 
 export default function MonthlySummary() {
-    const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
-    const [selectedMonth, setSelectedMonth] = useState(getMonth(new Date()) + 1);
-    const { children } = useFamily();
-    
-    // Get budget cycle dates
-    const { start, end } = getBudgetCycleDates(selectedYear, selectedMonth);
-    
-    // Prepare year and month options
-    const years = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - 2 + i);
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
-    
-    return (
+  const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
+  const [selectedMonth, setSelectedMonth] = useState(getMonth(new Date()) + 1);
+  const { children } = useFamily();
+
+  // Get budget cycle dates
+  const { start, end } = getBudgetCycleDates(selectedYear, selectedMonth);
+
+  // Prepare year and month options
+  const years = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - 2 + i);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  return (
     <Box>
-        <Heading size="lg" mb={4}>Monthly Summary</Heading>
-        
-        <HStack spacing={4} mb={6}>
-        <Select 
-            value={selectedMonth} 
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            width="150px"
+      <Heading size="lg" mb={4}>
+        Monthly Summary
+      </Heading>
+
+      <HStack spacing={4} mb={6}>
+        <Select
+          value={selectedMonth}
+          onChange={e => setSelectedMonth(Number(e.target.value))}
+          width="150px"
         >
-            {months.map(month => (
+          {months.map(month => (
             <option key={month} value={month}>
-                {format(new Date(2000, month - 1), 'MMMM')}
+              {format(new Date(2000, month - 1), 'MMMM')}
             </option>
-            ))}
+          ))}
         </Select>
-        
-        <Select 
-            value={selectedYear} 
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            width="120px"
+
+        <Select
+          value={selectedYear}
+          onChange={e => setSelectedYear(Number(e.target.value))}
+          width="120px"
         >
-            {years.map(year => (
-            <option key={year} value={year}>{year}</option>
-            ))}
+          {years.map(year => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
         </Select>
-        
-        <Text fontWeight="medium">
-            Cycle: {formatBudgetCycle(selectedYear, selectedMonth)}
-        </Text>
-        </HStack>
-        
-        <Divider mb={6} />
-        
-        <SimpleGrid columns={{ base: 1, md: children?.length || 1 }} spacing={6}>
+
+        <Text fontWeight="medium">Cycle: {formatBudgetCycle(selectedYear, selectedMonth)}</Text>
+      </HStack>
+
+      <Divider mb={6} />
+
+      <SimpleGrid columns={{ base: 1, md: children?.length || 1 }} spacing={6}>
         {children?.map(child => (
-            <ChildSummary 
-            key={child.id} 
-            child={child} 
-            startDate={format(start, 'yyyy-MM-dd')} 
-            endDate={format(end, 'yyyy-MM-dd')} 
-            />
+          <ChildSummary
+            key={child.id}
+            child={child}
+            startDate={format(start, 'yyyy-MM-dd')}
+            endDate={format(end, 'yyyy-MM-dd')}
+          />
         ))}
-        </SimpleGrid>
+      </SimpleGrid>
     </Box>
-    );
+  );
 }
 
 function ChildSummary({ child, startDate, endDate }) {
-    const { scores, isLoadingScores } = useScores(
-    child.id, 
-    startDate,
-    endDate
-    );
-    
-    const [summary, setSummary] = useState({
+  const { scores, isLoadingScores } = useScores(child.id, startDate, endDate);
+
+  const [summary, setSummary] = useState({
     totalDays: 0,
     scoredDays: 0,
     totalScore: 0,
     averageScore: 0,
     allowancePercentage: 0,
-    finalAllowance: 0
-    });
-    
-    useEffect(() => {
+    finalAllowance: 0,
+  });
+
+  useEffect(() => {
     if (scores && scores.length > 0) {
-        const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
-        const scoredDays = scores.length;
-        const average = scoredDays > 0 ? totalScore / scoredDays : 0;
-        const allowancePercentage = Math.min(100, Math.round(average * 20)); // 5 stars = 100%
-        
-        setSummary({
+      const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
+      const scoredDays = scores.length;
+      const average = scoredDays > 0 ? totalScore / scoredDays : 0;
+      const allowancePercentage = Math.min(100, Math.round(average * 20)); // 5 stars = 100%
+
+      setSummary({
         totalDays: 30, // Approximate, could calculate actual days in cycle
         scoredDays,
         totalScore,
         averageScore: average.toFixed(1),
         allowancePercentage,
-        finalAllowance: calculateAllowance(child.base_allowance, allowancePercentage / 100)
-        });
+        finalAllowance: calculateAllowance(child.base_allowance, allowancePercentage / 100),
+      });
     }
-    }, [scores, child]);
-    
-    return (
-    <Box 
-        borderWidth="1px" 
-        borderRadius="lg" 
-        p={4} 
-        boxShadow="sm"
-    >
-        <Heading size="md" mb={4}>{child.name}</Heading>
-        
-        <SimpleGrid columns={2} spacing={4} mb={4}>
+  }, [scores, child]);
+
+  return (
+    <Box borderWidth="1px" borderRadius="lg" p={4} boxShadow="sm">
+      <Heading size="md" mb={4}>
+        {child.name}
+      </Heading>
+
+      <SimpleGrid columns={2} spacing={4} mb={4}>
         <Stat>
-            <StatLabel>Average Score</StatLabel>
-            <StatNumber>{summary.averageScore}/5</StatNumber>
-            <StatHelpText>From {summary.scoredDays} days</StatHelpText>
+          <StatLabel>Average Score</StatLabel>
+          <StatNumber>{summary.averageScore}/5</StatNumber>
+          <StatHelpText>From {summary.scoredDays} days</StatHelpText>
         </Stat>
-        
+
         <Stat>
-            <StatLabel>Allowance</StatLabel>
-            <StatNumber>R{summary.finalAllowance.toFixed(2)}</StatNumber>
-            <StatHelpText>{summary.allowancePercentage}% of base</StatHelpText>
+          <StatLabel>Allowance</StatLabel>
+          <StatNumber>R{summary.finalAllowance.toFixed(2)}</StatNumber>
+          <StatHelpText>{summary.allowancePercentage}% of base</StatHelpText>
         </Stat>
-        </SimpleGrid>
-        
-        <Divider mb={4} />
-        
-        <Table size="sm" variant="simple">
+      </SimpleGrid>
+
+      <Divider mb={4} />
+
+      <Table size="sm" variant="simple">
         <Thead>
-            <Tr>
+          <Tr>
             <Th>Date</Th>
             <Th isNumeric>Score</Th>
             <Th>Vacation</Th>
-            </Tr>
+          </Tr>
         </Thead>
         <Tbody>
-            {isLoadingScores ? (
+          {isLoadingScores ? (
             <Tr>
-                <Td colSpan={3} textAlign="center">Loading...</Td>
+              <Td colSpan={3} textAlign="center">
+                Loading...
+              </Td>
             </Tr>
-            ) : (
+          ) : (
             scores?.map(score => (
-                <Tr key={score.id}>
+              <Tr key={score.id}>
                 <Td>{format(new Date(score.date), 'MMM d')}</Td>
                 <Td isNumeric>{score.score}</Td>
                 <Td>{score.is_vacation ? 'Yes' : 'No'}</Td>
-                </Tr>
+              </Tr>
             ))
-            )}
-            {!isLoadingScores && (!scores || scores.length === 0) && (
+          )}
+          {!isLoadingScores && (!scores || scores.length === 0) && (
             <Tr>
-                <Td colSpan={3} textAlign="center">No scores recorded yet</Td>
+              <Td colSpan={3} textAlign="center">
+                No scores recorded yet
+              </Td>
             </Tr>
-            )}
+          )}
         </Tbody>
-        </Table>
+      </Table>
     </Box>
-    );
+  );
 }
 ```
 
@@ -963,11 +988,11 @@ function ChildSummary({ child, startDate, endDate }) {
 - Title: Build vacation day selection interface
 - Description: Create a component for selecting multiple days as vacation days.
 
-```jsx
+````jsx
 // src/components/scoring/VacationDaySelector.jsx
 import { useState } from 'react';
-import { 
-    Box, Button, FormControl, FormLabel, 
+import {
+    Box, Button, FormControl, FormLabel,
     Heading,
     12. **Create Vacation Day Selection**
 - Title: "Build vacation day selection interface"
@@ -975,8 +1000,8 @@ import {
 ```jsx
 // src/components/scoring/VacationDaySelector.jsx
 import { useState } from 'react';
-import { 
-    Box, Button, FormControl, FormLabel, 
+import {
+    Box, Button, FormControl, FormLabel,
     Heading, Input, Stack, HStack, Text,
     useToast, NumberInput, NumberInputField,
     NumberInputStepper, NumberIncrementStepper,
@@ -991,17 +1016,17 @@ export default function VacationDaySelector({ childId }) {
     const [endDate, setEndDate] = useState('');
     const [score, setScore] = useState(3);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     const toast = useToast();
     const { markVacationDays, isMarkingVacation } = useScores(childId);
-    
+
     const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate dates
     const start = parseISO(startDate);
     const end = parseISO(endDate);
-    
+
     if (!isValid(start) || !isValid(end)) {
         toast({
         title: 'Invalid dates',
@@ -1012,7 +1037,7 @@ export default function VacationDaySelector({ childId }) {
         });
         return;
     }
-    
+
     if (start > end) {
         toast({
         title: 'Invalid date range',
@@ -1023,25 +1048,25 @@ export default function VacationDaySelector({ childId }) {
         });
         return;
     }
-    
+
     // Generate dates in range
     setIsSubmitting(true);
     const dates = [];
     let current = new Date(start);
     const endTime = end.getTime();
-    
+
     while (current.getTime() <= endTime) {
         dates.push(format(current, 'yyyy-MM-dd'));
         current.setDate(current.getDate() + 1);
     }
-    
+
     try {
         await markVacationDays({
         childId,
         dates,
         score
         });
-        
+
         toast({
         title: 'Vacation days marked',
         description: `${dates.length} days marked as vacation`,
@@ -1049,7 +1074,7 @@ export default function VacationDaySelector({ childId }) {
         duration: 3000,
         isClosable: true,
         });
-        
+
         // Reset form
         setStartDate('');
         setEndDate('');
@@ -1065,11 +1090,11 @@ export default function VacationDaySelector({ childId }) {
         setIsSubmitting(false);
     }
     };
-    
+
     return (
     <Box as="form" onSubmit={handleSubmit}>
         <Heading size="md" mb={4}>Mark Vacation Days</Heading>
-        
+
         <Stack spacing={4}>
         <FormControl isRequired>
             <FormLabel>Start Date</FormLabel>
@@ -1079,7 +1104,7 @@ export default function VacationDaySelector({ childId }) {
             onChange={(e) => setStartDate(e.target.value)}
             />
         </FormControl>
-        
+
         <FormControl isRequired>
             <FormLabel>End Date</FormLabel>
             <Input
@@ -1088,12 +1113,12 @@ export default function VacationDaySelector({ childId }) {
             onChange={(e) => setEndDate(e.target.value)}
             />
         </FormControl>
-        
+
         <FormControl>
             <FormLabel>Default Score</FormLabel>
-            <NumberInput 
-            min={1} 
-            max={5} 
+            <NumberInput
+            min={1}
+            max={5}
             value={score}
             onChange={(valueString) => setScore(Number(valueString))}
             >
@@ -1107,10 +1132,10 @@ export default function VacationDaySelector({ childId }) {
             Score to assign to all vacation days
             </Text>
         </FormControl>
-        
-        <Button 
-            type="submit" 
-            colorScheme="blue" 
+
+        <Button
+            type="submit"
+            colorScheme="blue"
             isLoading={isSubmitting || isMarkingVacation}
         >
             Mark Vacation Days
@@ -1119,7 +1144,7 @@ export default function VacationDaySelector({ childId }) {
     </Box>
     );
 }
-```
+````
 
 13. **Daily Score Entry Component**
 
@@ -1129,107 +1154,109 @@ export default function VacationDaySelector({ childId }) {
 ```jsx
 // src/components/scoring/DailyScoreCard.jsx
 import { useState } from 'react';
-import { 
-    Box, Button, FormControl, FormLabel, 
-    Textarea, HStack, Switch, useToast,
-    Radio, RadioGroup, Stack
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Textarea,
+  HStack,
+  Switch,
+  useToast,
+  Radio,
+  RadioGroup,
+  Stack,
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { useScores } from '../../hooks/useScores';
 import { useFamily } from '../../hooks/useFamily';
 
 export default function DailyScoreCard({ childId, date, existingScore, onSaved }) {
-    const [score, setScore] = useState(existingScore?.score || 3);
-    const [isVacation, setIsVacation] = useState(existingScore?.is_vacation || false);
-    const [notes, setNotes] = useState(existingScore?.notes || '');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const toast = useToast();
-    const { addScore, isAddingScore } = useScores(childId);
-    
-    const handleSubmit = async (e) => {
+  const [score, setScore] = useState(existingScore?.score || 3);
+  const [isVacation, setIsVacation] = useState(existingScore?.is_vacation || false);
+  const [notes, setNotes] = useState(existingScore?.notes || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const toast = useToast();
+  const { addScore, isAddingScore } = useScores(childId);
+
+  const handleSubmit = async e => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
-        await addScore({
+      await addScore({
         child_id: childId,
         date: format(date, 'yyyy-MM-dd'),
         score: Number(score),
         is_vacation: isVacation,
-        notes
-        });
-        
-        toast({
+        notes,
+      });
+
+      toast({
         title: 'Score saved',
         description: `Score for ${format(date, 'MMMM d, yyyy')} saved successfully`,
         status: 'success',
         duration: 3000,
         isClosable: true,
-        });
-        
-        if (onSaved) {
+      });
+
+      if (onSaved) {
         onSaved();
-        }
-        
+      }
     } catch (error) {
-        toast({
+      toast({
         title: 'Error saving score',
         description: error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
-        });
+      });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
-    };
-    
-    return (
+  };
+
+  return (
     <Box as="form" onSubmit={handleSubmit}>
-        <FormControl mb={4}>
+      <FormControl mb={4}>
         <FormLabel>Score (1-5)</FormLabel>
         <RadioGroup value={String(score)} onChange={setScore}>
-            <HStack spacing={4}>
-            {[1, 2, 3, 4, 5].map((value) => (
-                <Radio key={value} value={String(value)}>
+          <HStack spacing={4}>
+            {[1, 2, 3, 4, 5].map(value => (
+              <Radio key={value} value={String(value)}>
                 {value}
-                </Radio>
+              </Radio>
             ))}
-            </HStack>
+          </HStack>
         </RadioGroup>
-        </FormControl>
-        
-        <FormControl display="flex" alignItems="center" mb={4}>
-        <FormLabel mb="0">
-            Vacation Day
-        </FormLabel>
-        <Switch 
-            isChecked={isVacation}
-            onChange={(e) => setIsVacation(e.target.checked)}
-        />
-        </FormControl>
-        
-        <FormControl mb={4}>
+      </FormControl>
+
+      <FormControl display="flex" alignItems="center" mb={4}>
+        <FormLabel mb="0">Vacation Day</FormLabel>
+        <Switch isChecked={isVacation} onChange={e => setIsVacation(e.target.checked)} />
+      </FormControl>
+
+      <FormControl mb={4}>
         <FormLabel>Notes</FormLabel>
         <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional notes about today's behavior"
-            rows={3}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Optional notes about today's behavior"
+          rows={3}
         />
-        </FormControl>
-        
-        <Button 
-        type="submit" 
-        colorScheme="blue" 
+      </FormControl>
+
+      <Button
+        type="submit"
+        colorScheme="blue"
         isLoading={isSubmitting || isAddingScore}
         width="full"
-        >
+      >
         Save Score
-        </Button>
+      </Button>
     </Box>
-    );
+  );
 }
 ```
 
@@ -1244,11 +1271,32 @@ export default function DailyScoreCard({ childId, date, existingScore, onSaved }
 // src/components/dashboard/ParentDashboard.jsx
 import { useState } from 'react';
 import {
-    Box, Heading, Tabs, TabList, Tab, TabPanels, TabPanel,
-    SimpleGrid, Card, CardHeader, CardBody, Stat, StatLabel, 
-    StatNumber, StatHelpText, Text, Button, HStack, Select,
-    useDisclosure, Modal, ModalOverlay, ModalContent, 
-    ModalHeader, ModalBody, ModalFooter
+  Box,
+  Heading,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  SimpleGrid,
+  Card,
+  CardHeader,
+  CardBody,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  Text,
+  Button,
+  HStack,
+  Select,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@chakra-ui/react';
 import { format, subDays } from 'date-fns';
 import { useFamily } from '../../hooks/useFamily';
@@ -1259,156 +1307,134 @@ import VacationDaySelector from '../scoring/VacationDaySelector';
 import ScoreChart from './ScoreChart';
 
 export default function ParentDashboard() {
-    const [selectedChild, setSelectedChild] = useState(null);
-    const [scoreDate, setScoreDate] = useState(new Date());
-    const { isOpen, onOpen, onClose } = useDisclosure();
-    const { children, isLoadingChildren } = useFamily();
-    
-    const handleChildChange = (e) => {
+  const [selectedChild, setSelectedChild] = useState(null);
+  const [scoreDate, setScoreDate] = useState(new Date());
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { children, isLoadingChildren } = useFamily();
+
+  const handleChildChange = e => {
     setSelectedChild(e.target.value);
-    };
-    
-    const today = new Date();
-    
-    return (
+  };
+
+  const today = new Date();
+
+  return (
     <Box>
-        <Heading size="lg" mb={6}>Parent Dashboard</Heading>
-        
-        {/* Child selector */}
-        <HStack mb={6}>
+      <Heading size="lg" mb={6}>
+        Parent Dashboard
+      </Heading>
+
+      {/* Child selector */}
+      <HStack mb={6}>
         <Text>Select Child:</Text>
-        <Select 
-            placeholder="Select child" 
-            value={selectedChild || ''}
-            onChange={handleChildChange}
-            isDisabled={isLoadingChildren || !children?.length}
-            width="200px"
+        <Select
+          placeholder="Select child"
+          value={selectedChild || ''}
+          onChange={handleChildChange}
+          isDisabled={isLoadingChildren || !children?.length}
+          width="200px"
         >
-            {children?.map(child => (
+          {children?.map(child => (
             <option key={child.id} value={child.id}>
-                {child.name}
+              {child.name}
             </option>
-            ))}
+          ))}
         </Select>
-        
-        <Button 
-            onClick={onOpen}
-            isDisabled={!selectedChild}
-            colorScheme="blue"
-            size="sm"
-        >
-            Add Today's Score
+
+        <Button onClick={onOpen} isDisabled={!selectedChild} colorScheme="blue" size="sm">
+          Add Today's Score
         </Button>
-        </HStack>
-        
-        {/* Quick stats */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={6}>
-        <QuickStatCard 
-            childId={selectedChild} 
-            days={7} 
-            label="Last 7 Days" 
-        />
-        <QuickStatCard 
-            childId={selectedChild} 
-            days={30} 
-            label="Last 30 Days" 
-        />
-        <QuickStatCard 
-            childId={selectedChild} 
-            isCycle={true} 
-            label="Current Cycle" 
-        />
-        </SimpleGrid>
-        
-        {/* Tabs for different views */}
-        <Tabs isLazy>
+      </HStack>
+
+      {/* Quick stats */}
+      <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={6}>
+        <QuickStatCard childId={selectedChild} days={7} label="Last 7 Days" />
+        <QuickStatCard childId={selectedChild} days={30} label="Last 30 Days" />
+        <QuickStatCard childId={selectedChild} isCycle={true} label="Current Cycle" />
+      </SimpleGrid>
+
+      {/* Tabs for different views */}
+      <Tabs isLazy>
         <TabList>
-            <Tab>Calendar</Tab>
-            <Tab>Trends</Tab>
-            <Tab>Vacation</Tab>
+          <Tab>Calendar</Tab>
+          <Tab>Trends</Tab>
+          <Tab>Vacation</Tab>
         </TabList>
-        
+
         <TabPanels>
-            <TabPanel>
+          <TabPanel>
             {selectedChild ? (
-                <ScoreCalendar 
-                childId={selectedChild} 
-                month={scoreDate}
-                />
+              <ScoreCalendar childId={selectedChild} month={scoreDate} />
             ) : (
-                <Text>Please select a child to view their calendar</Text>
+              <Text>Please select a child to view their calendar</Text>
             )}
-            </TabPanel>
-            
-            <TabPanel>
+          </TabPanel>
+
+          <TabPanel>
             {selectedChild ? (
-                <ScoreChart childId={selectedChild} />
+              <ScoreChart childId={selectedChild} />
             ) : (
-                <Text>Please select a child to view their trends</Text>
+              <Text>Please select a child to view their trends</Text>
             )}
-            </TabPanel>
-            
-            <TabPanel>
+          </TabPanel>
+
+          <TabPanel>
             {selectedChild ? (
-                <VacationDaySelector childId={selectedChild} />
+              <VacationDaySelector childId={selectedChild} />
             ) : (
-                <Text>Please select a child to mark vacation days</Text>
+              <Text>Please select a child to mark vacation days</Text>
             )}
-            </TabPanel>
+          </TabPanel>
         </TabPanels>
-        </Tabs>
-        
-        {/* Modal for quick score entry */}
-        <Modal isOpen={isOpen} onClose={onClose}>
+      </Tabs>
+
+      {/* Modal for quick score entry */}
+      <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-            <ModalHeader>
-            Add Score for {format(today, 'MMMM d, yyyy')}
-            </ModalHeader>
-            <ModalBody>
+          <ModalHeader>Add Score for {format(today, 'MMMM d, yyyy')}</ModalHeader>
+          <ModalBody>
             {selectedChild && (
-                <DailyScoreCard 
-                childId={selectedChild} 
-                date={today}
-                onSaved={onClose}
-                />
+              <DailyScoreCard childId={selectedChild} date={today} onSaved={onClose} />
             )}
-            </ModalBody>
-            <ModalFooter>
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            </ModalFooter>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+          </ModalFooter>
         </ModalContent>
-        </Modal>
+      </Modal>
     </Box>
-    );
+  );
 }
 
 // Helper component for stats
 function QuickStatCard({ childId, days, isCycle, label }) {
-    const [stats, setStats] = useState({
+  const [stats, setStats] = useState({
     average: 0,
     daysRecorded: 0,
-    percentComplete: 0
-    });
-    
-    const { scores, isLoadingScores } = useScores(childId);
-    
-    // Compute stats (would calculate based on actual cycle or date range)
-    // This would need to be expanded in a real component
-    
-    return (
+    percentComplete: 0,
+  });
+
+  const { scores, isLoadingScores } = useScores(childId);
+
+  // Compute stats (would calculate based on actual cycle or date range)
+  // This would need to be expanded in a real component
+
+  return (
     <Card>
-        <CardHeader pb={0}>
+      <CardHeader pb={0}>
         <Text fontWeight="medium">{label}</Text>
-        </CardHeader>
-        <CardBody>
+      </CardHeader>
+      <CardBody>
         <Stat>
-            <StatNumber>{stats.average.toFixed(1)}/5</StatNumber>
-            <StatHelpText>{stats.daysRecorded} days recorded</StatHelpText>
+          <StatNumber>{stats.average.toFixed(1)}/5</StatNumber>
+          <StatHelpText>{stats.daysRecorded} days recorded</StatHelpText>
         </Stat>
-        </CardBody>
+      </CardBody>
     </Card>
-    );
+  );
 }
 ```
 
@@ -1421,9 +1447,20 @@ function QuickStatCard({ childId, days, isCycle, label }) {
 // src/components/dashboard/ChildDashboard.jsx
 import { useState, useEffect } from 'react';
 import {
-    Box, Heading, SimpleGrid, Progress, Text,
-    Stat, StatLabel, StatNumber, StatHelpText,
-    Card, CardHeader, CardBody, HStack, Icon
+  Box,
+  Heading,
+  SimpleGrid,
+  Progress,
+  Text,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  Card,
+  CardHeader,
+  CardBody,
+  HStack,
+  Icon,
 } from '@chakra-ui/react';
 import { FaStar, FaRegStar } from 'react-icons/fa';
 import { useScores } from '../../hooks/useScores';
@@ -1431,106 +1468,106 @@ import { getCurrentBudgetCycle, formatBudgetCycle } from '../../lib/dateUtils';
 import ScoreChart from './ScoreChart';
 
 export default function ChildDashboard({ childId, childName }) {
-    const [stats, setStats] = useState({
+  const [stats, setStats] = useState({
     average: 0,
     daysRecorded: 0,
     percentComplete: 0,
-    allowanceProgress: 0
-    });
-    
-    const { start, end } = getCurrentBudgetCycle();
-    const { scores, isLoadingScores } = useScores(
-    childId, 
+    allowanceProgress: 0,
+  });
+
+  const { start, end } = getCurrentBudgetCycle();
+  const { scores, isLoadingScores } = useScores(
+    childId,
     format(start, 'yyyy-MM-dd'),
     format(end, 'yyyy-MM-dd')
-    );
-    
-    useEffect(() => {
+  );
+
+  useEffect(() => {
     if (scores && scores.length > 0) {
-        const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
-        const average = totalScore / scores.length;
-        const allowanceProgress = Math.min(100, average * 20); // 5 = 100%
-        
-        setStats({
+      const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
+      const average = totalScore / scores.length;
+      const allowanceProgress = Math.min(100, average * 20); // 5 = 100%
+
+      setStats({
         average,
         daysRecorded: scores.length,
         percentComplete: 0, // Would calculate from cycle dates
-        allowanceProgress
-        });
+        allowanceProgress,
+      });
     }
-    }, [scores]);
-    
-    return (
+  }, [scores]);
+
+  return (
     <Box>
-        <Heading size="lg" mb={2}>{childName}'s Dashboard</Heading>
-        <Text mb={6}>
-        Keep up the great work to earn your full allowance!
-        </Text>
-        
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
+      <Heading size="lg" mb={2}>
+        {childName}'s Dashboard
+      </Heading>
+      <Text mb={6}>Keep up the great work to earn your full allowance!</Text>
+
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
         <Card>
-            <CardHeader pb={0}>
+          <CardHeader pb={0}>
             <Text fontWeight="medium">Current Cycle Progress</Text>
             <Text fontSize="sm" color="gray.500">
-                {formatBudgetCycle()}
+              {formatBudgetCycle()}
             </Text>
-            </CardHeader>
-            <CardBody>
+          </CardHeader>
+          <CardBody>
             <Stat mb={4}>
-                <StatLabel>Average Score</StatLabel>
-                <StatNumber>{stats.average.toFixed(1)}/5</StatNumber>
-                <StatHelpText>{stats.daysRecorded} days recorded</StatHelpText>
+              <StatLabel>Average Score</StatLabel>
+              <StatNumber>{stats.average.toFixed(1)}/5</StatNumber>
+              <StatHelpText>{stats.daysRecorded} days recorded</StatHelpText>
             </Stat>
-            
+
             <Box mb={2}>
-                <HStack mb={1} justify="space-between">
+              <HStack mb={1} justify="space-between">
                 <Text fontSize="sm">Allowance Progress</Text>
                 <Text fontSize="sm" fontWeight="bold">
-                    {stats.allowanceProgress.toFixed(0)}%
+                  {stats.allowanceProgress.toFixed(0)}%
                 </Text>
-                </HStack>
-                <Progress 
-                value={stats.allowanceProgress} 
-                colorScheme="green" 
+              </HStack>
+              <Progress
+                value={stats.allowanceProgress}
+                colorScheme="green"
                 borderRadius="md"
                 height="12px"
-                />
+              />
             </Box>
-            
+
             <HStack mt={4} spacing={1}>
-                {[1, 2, 3, 4, 5].map(score => (
-                <Icon 
-                    key={score}
-                    as={stats.average >= score ? FaStar : FaRegStar}
-                    color="yellow.400"
-                    boxSize={6}
+              {[1, 2, 3, 4, 5].map(score => (
+                <Icon
+                  key={score}
+                  as={stats.average >= score ? FaStar : FaRegStar}
+                  color="yellow.400"
+                  boxSize={6}
                 />
-                ))}
+              ))}
             </HStack>
-            </CardBody>
+          </CardBody>
         </Card>
-        
+
         <Card>
-            <CardHeader pb={0}>
+          <CardHeader pb={0}>
             <Text fontWeight="medium">Recent Scores</Text>
-            </CardHeader>
-            <CardBody>
+          </CardHeader>
+          <CardBody>
             {/* Would render last 5 daily scores */}
             <Text>Recent daily scores would go here</Text>
-            </CardBody>
+          </CardBody>
         </Card>
-        </SimpleGrid>
-        
-        <Card>
+      </SimpleGrid>
+
+      <Card>
         <CardHeader>
-            <Text fontWeight="medium">Your Score History</Text>
+          <Text fontWeight="medium">Your Score History</Text>
         </CardHeader>
         <CardBody>
-            <ScoreChart childId={childId} simplified={true} />
+          <ScoreChart childId={childId} simplified={true} />
         </CardBody>
-        </Card>
+      </Card>
     </Box>
-    );
+  );
 }
 ```
 
@@ -1543,115 +1580,120 @@ export default function ChildDashboard({ childId, childName }) {
 // src/components/dashboard/ScoreChart.jsx
 import { useState, useEffect } from 'react';
 import { Box, Text, Select, HStack } from '@chakra-ui/react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
+import {
+  format,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+} from 'date-fns';
 import { useScores } from '../../hooks/useScores';
 
 export default function ScoreChart({ childId, simplified = false }) {
-    const [timeRange, setTimeRange] = useState('1month');
-    const [chartData, setChartData] = useState([]);
-    
-    // Get scores
-    const { scores, isLoadingScores } = useScores(childId);
-    
-    // Prepare chart data whenever scores change
-    useEffect(() => {
+  const [timeRange, setTimeRange] = useState('1month');
+  const [chartData, setChartData] = useState([]);
+
+  // Get scores
+  const { scores, isLoadingScores } = useScores(childId);
+
+  // Prepare chart data whenever scores change
+  useEffect(() => {
     if (!scores || scores.length === 0) return;
-    
+
     // Determine date range based on selected time period
     const today = new Date();
     let startDate, endDate;
-    
+
     switch (timeRange) {
-        case '1month':
+      case '1month':
         startDate = subMonths(today, 1);
         endDate = today;
         break;
-        case '3months':
+      case '3months':
         startDate = subMonths(today, 3);
         endDate = today;
         break;
-        case 'currentMonth':
+      case 'currentMonth':
         startDate = startOfMonth(today);
         endDate = endOfMonth(today);
         break;
-        default:
+      default:
         startDate = subMonths(today, 1);
         endDate = today;
     }
-    
+
     // Generate all days in the interval
     const days = eachDayOfInterval({ start: startDate, end: endDate });
-    
+
     // Map scores to days
     const data = days.map(day => {
-        const score = scores.find(s => isSameDay(new Date(s.date), day));
-        return {
+      const score = scores.find(s => isSameDay(new Date(s.date), day));
+      return {
         date: format(day, 'MMM dd'),
         score: score ? score.score : null,
-        isVacation: score ? score.is_vacation : false
-        };
+        isVacation: score ? score.is_vacation : false,
+      };
     });
-    
+
     setChartData(data);
-    }, [scores, timeRange]);
-    
-    return (
+  }, [scores, timeRange]);
+
+  return (
     <Box>
-        {!simplified && (
+      {!simplified && (
         <HStack justify="flex-end" mb={4}>
-            <Text>Time Range:</Text>
-            <Select 
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            width="150px"
-            >
+          <Text>Time Range:</Text>
+          <Select value={timeRange} onChange={e => setTimeRange(e.target.value)} width="150px">
             <option value="1month">Last Month</option>
             <option value="3months">Last 3 Months</option>
             <option value="currentMonth">Current Month</option>
-            </Select>
+          </Select>
         </HStack>
-        )}
-        
-        <Box height="300px">
+      )}
+
+      <Box height="300px">
         {isLoadingScores ? (
-            <Text textAlign="center">Loading chart data...</Text>
+          <Text textAlign="center">Loading chart data...</Text>
         ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 12 }}
-                interval={simplified ? 2 : 1}
-                />
-                <YAxis 
-                domain={[0, 5]} 
-                ticks={[1, 2, 3, 4, 5]}
-                />
-                <Tooltip 
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} interval={simplified ? 2 : 1} />
+              <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} />
+              <Tooltip
                 formatter={(value, name) => [value, 'Score']}
-                labelFormatter={(label) => `Date: ${label}`}
-                />
-                {!simplified && <Legend />}
-                <Line 
-                type="monotone" 
-                dataKey="score" 
-                stroke="#3182CE" 
+                labelFormatter={label => `Date: ${label}`}
+              />
+              {!simplified && <Legend />}
+              <Line
+                type="monotone"
+                dataKey="score"
+                stroke="#3182CE"
                 strokeWidth={2}
                 connectNulls={true}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
                 name="Daily Score"
-                />
+              />
             </LineChart>
-            </ResponsiveContainer>
+          </ResponsiveContainer>
         ) : (
-            <Text textAlign="center">No data available for the selected period</Text>
+          <Text textAlign="center">No data available for the selected period</Text>
         )}
-        </Box>
+      </Box>
     </Box>
-    );
+  );
 }
 ```
 
@@ -1664,93 +1706,93 @@ export default function ScoreChart({ childId, simplified = false }) {
 // src/lib/scoreUtils.js
 
 /**
-* Calculate allowance based on base amount and performance multiplier
-* @param {number} baseAmount - Base allowance amount
-* @param {number} performanceMultiplier - Performance multiplier (0-1)
-* @returns {number} - Final allowance amount
-*/
+ * Calculate allowance based on base amount and performance multiplier
+ * @param {number} baseAmount - Base allowance amount
+ * @param {number} performanceMultiplier - Performance multiplier (0-1)
+ * @returns {number} - Final allowance amount
+ */
 export function calculateAllowance(baseAmount, performanceMultiplier) {
-    // Ensure multiplier is between 0 and 1
-    const multiplier = Math.max(0, Math.min(1, performanceMultiplier));
-    
-    // Calculate final amount
-    return baseAmount * multiplier;
+  // Ensure multiplier is between 0 and 1
+  const multiplier = Math.max(0, Math.min(1, performanceMultiplier));
+
+  // Calculate final amount
+  return baseAmount * multiplier;
 }
 
 /**
-* Calculate average score from an array of scores
-* @param {Array} scores - Array of score objects
-* @returns {Object} - Score statistics
-*/
+ * Calculate average score from an array of scores
+ * @param {Array} scores - Array of score objects
+ * @returns {Object} - Score statistics
+ */
 export function calculateScoreStats(scores) {
-    if (!scores || scores.length === 0) {
+  if (!scores || scores.length === 0) {
     return {
-        average: 0,
-        count: 0,
-        min: 0,
-        max: 0,
-        allowancePercentage: 0
+      average: 0,
+      count: 0,
+      min: 0,
+      max: 0,
+      allowancePercentage: 0,
     };
-    }
-    
-    const total = scores.reduce((sum, score) => sum + score.score, 0);
-    const count = scores.length;
-    const average = total / count;
-    
-    // Calculate min and max scores
-    const scoreValues = scores.map(s => s.score);
-    const min = Math.min(...scoreValues);
-    const max = Math.max(...scoreValues);
-    
-    // Convert average to percentage (5 stars = 100%)
-    const allowancePercentage = (average / 5) * 100;
-    
-    return {
+  }
+
+  const total = scores.reduce((sum, score) => sum + score.score, 0);
+  const count = scores.length;
+  const average = total / count;
+
+  // Calculate min and max scores
+  const scoreValues = scores.map(s => s.score);
+  const min = Math.min(...scoreValues);
+  const max = Math.max(...scoreValues);
+
+  // Convert average to percentage (5 stars = 100%)
+  const allowancePercentage = (average / 5) * 100;
+
+  return {
     average,
     count,
     min,
     max,
-    allowancePercentage
-    };
+    allowancePercentage,
+  };
 }
 
 /**
-* Group scores by time period (day, week, month)
-* @param {Array} scores - Array of score objects
-* @param {string} grouping - Grouping period ('day', 'week', 'month')
-* @returns {Object} - Grouped scores
-*/
+ * Group scores by time period (day, week, month)
+ * @param {Array} scores - Array of score objects
+ * @param {string} grouping - Grouping period ('day', 'week', 'month')
+ * @returns {Object} - Grouped scores
+ */
 export function groupScoresByPeriod(scores, grouping = 'day') {
-    if (!scores || scores.length === 0) {
+  if (!scores || scores.length === 0) {
     return {};
-    }
-    
-    return scores.reduce((groups, score) => {
+  }
+
+  return scores.reduce((groups, score) => {
     const date = new Date(score.date);
     let key;
-    
+
     switch (grouping) {
-        case 'week':
+      case 'week':
         // Get ISO week (1-52)
         const weekNum = getISOWeek(date);
         const year = getYear(date);
         key = `${year}-W${weekNum}`;
         break;
-        case 'month':
+      case 'month':
         key = format(date, 'yyyy-MM');
         break;
-        case 'day':
-        default:
+      case 'day':
+      default:
         key = format(date, 'yyyy-MM-dd');
     }
-    
+
     if (!groups[key]) {
-        groups[key] = [];
+      groups[key] = [];
     }
-    
+
     groups[key].push(score);
     return groups;
-    }, {});
+  }, {});
 }
 ```
 
@@ -1790,9 +1832,9 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
-              <Route 
-                path="/" 
+
+              <Route
+                path="/"
                 element={
                   <PrivateRoute>
                     <Layout />
@@ -1800,45 +1842,45 @@ function App() {
                 }
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
-                
+
                 {/* Role-based dashboard route */}
                 <Route path="dashboard" element={<RoleBasedDashboard />} />
-                
+
                 {/* Parent-only routes */}
-                <Route 
-                  path="parent" 
+                <Route
+                  path="parent"
                   element={
                     <RoleRoute allowedRoles={['parent']}>
                       <ParentDashboard />
                     </RoleRoute>
-                  } 
+                  }
                 />
-                
-                <Route 
-                  path="member/:memberId" 
+
+                <Route
+                  path="member/:memberId"
                   element={
                     <RoleRoute allowedRoles={['parent']}>
                       <MemberDashboard />
                     </RoleRoute>
-                  } 
+                  }
                 />
-                
-                <Route 
-                  path="settings" 
+
+                <Route
+                  path="settings"
                   element={
                     <RoleRoute allowedRoles={['parent']}>
                       <Settings />
                     </RoleRoute>
-                  } 
+                  }
                 />
-                
-                <Route 
-                  path="reports" 
+
+                <Route
+                  path="reports"
                   element={
                     <RoleRoute allowedRoles={['parent']}>
                       <Reports />
                     </RoleRoute>
-                  } 
+                  }
                 />
               </Route>
             </Routes>
@@ -1852,13 +1894,13 @@ function App() {
 // Helper component to redirect based on role
 function RoleBasedDashboard() {
   const { userRole, familyMember } = useAuth();
-  
+
   if (userRole === 'parent') {
     return <Navigate to="/parent" replace />;
   } else if (userRole === 'child') {
     return <MemberDashboard memberId={familyMember?.id} />;
   }
-  
+
   // Fallback
   return <Navigate to="/login" replace />;
 }
@@ -1875,17 +1917,17 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function RoleRoute({ children, allowedRoles }) {
   const { user, userRole } = useAuth();
-  
+
   // If not authenticated, redirect to login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   // If role not in allowed roles, redirect to dashboard
   if (!allowedRoles.includes(userRole)) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   // Otherwise render children
   return children;
 }
@@ -1894,30 +1936,30 @@ export default function RoleRoute({ children, allowedRoles }) {
 function AddMemberModal({ isOpen, onClose, familyId }) {
   const toast = useToast();
   const { addFamilyMember, isAddingMember } = useFamily();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role: 'child',
-    base_allowance: 0
+    base_allowance: 0,
   });
-  
-  const handleInputChange = (e) => {
+
+  const handleInputChange = e => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
-  
+
   const handleSubmit = async () => {
     try {
       await addFamilyMember({
         ...formData,
-        family_id: familyId
+        family_id: familyId,
       });
-      
+
       toast({
         title: 'Family member added',
         description: `${formData.name} was added successfully`,
@@ -1925,16 +1967,16 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
         duration: 3000,
         isClosable: true,
       });
-      
+
       // Reset form
       setFormData({
         name: '',
         email: '',
         password: '',
         role: 'child',
-        base_allowance: 0
+        base_allowance: 0,
       });
-      
+
       onClose();
     } catch (error) {
       toast({
@@ -1946,7 +1988,7 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
       });
     }
   };
-  
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
@@ -1963,7 +2005,7 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
                 placeholder="Name"
               />
             </FormControl>
-            
+
             <FormControl isRequired>
               <FormLabel>Email</FormLabel>
               <Input
@@ -1974,7 +2016,7 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
                 placeholder="Email address"
               />
             </FormControl>
-            
+
             <FormControl isRequired>
               <FormLabel>Password</FormLabel>
               <Input
@@ -1985,19 +2027,15 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
                 placeholder="Password"
               />
             </FormControl>
-            
+
             <FormControl isRequired>
               <FormLabel>Role</FormLabel>
-              <Select
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-              >
+              <Select name="role" value={formData.role} onChange={handleInputChange}>
                 <option value="parent">Parent</option>
                 <option value="child">Child</option>
               </Select>
             </FormControl>
-            
+
             {formData.role === 'child' && (
               <FormControl>
                 <FormLabel>Base Allowance</FormLabel>
@@ -2006,10 +2044,12 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
                   precision={2}
                   step={10}
                   value={formData.base_allowance}
-                  onChange={(valueString) => setFormData(prev => ({
-                    ...prev,
-                    base_allowance: Number(valueString)
-                  }))}
+                  onChange={valueString =>
+                    setFormData(prev => ({
+                      ...prev,
+                      base_allowance: Number(valueString),
+                    }))
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -2028,11 +2068,7 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
           <Button variant="ghost" mr={3} onClick={onClose}>
             Cancel
           </Button>
-          <Button 
-            colorScheme="blue" 
-            onClick={handleSubmit}
-            isLoading={isAddingMember}
-          >
+          <Button colorScheme="blue" onClick={handleSubmit} isLoading={isAddingMember}>
             Add Member
           </Button>
         </ModalFooter>
@@ -2051,224 +2087,243 @@ function AddMemberModal({ isOpen, onClose, familyId }) {
 // src/pages/Settings.jsx
 import { useState } from 'react';
 import {
-    Box, Heading, FormControl, FormLabel, Input, Button,
-    VStack, HStack, Divider, Text, Table, Thead, Tbody,
-    Tr, Th, Td, useToast, Card, CardHeader, CardBody,
-    Modal, ModalOverlay, ModalContent, ModalHeader,
-    ModalBody, ModalFooter, useDisclosure,
-    NumberInput, NumberInputField, NumberInputStepper,
-    NumberIncrementStepper, NumberDecrementStepper
+  Box,
+  Heading,
+  FormControl,
+  FormLabel,
+  Input,
+  Button,
+  VStack,
+  HStack,
+  Divider,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  useToast,
+  Card,
+  CardHeader,
+  CardBody,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
 } from '@chakra-ui/react';
 import { useFamily } from '../hooks/useFamily';
 
 export default function Settings() {
-    const { isOpen, onOpen, onClose } = useDisclosure();
-    const toast = useToast();
-    const { family, children, addChild, isAddingChild } = useFamily();
-    
-    const [newChild, setNewChild] = useState({
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
+  const { family, children, addChild, isAddingChild } = useFamily();
+
+  const [newChild, setNewChild] = useState({
     name: '',
-    base_allowance: 0
-    });
-    
-    const handleInputChange = (e) => {
+    base_allowance: 0,
+  });
+
+  const handleInputChange = e => {
     const { name, value } = e.target;
     setNewChild(prev => ({
-        ...prev,
-        [name]: value
+      ...prev,
+      [name]: value,
     }));
-    };
-    
-    const handleAllowanceChange = (value) => {
+  };
+
+  const handleAllowanceChange = value => {
     setNewChild(prev => ({
-        ...prev,
-        base_allowance: Number(value)
+      ...prev,
+      base_allowance: Number(value),
     }));
-    };
-    
-    const handleAddChild = async () => {
+  };
+
+  const handleAddChild = async () => {
     if (!newChild.name) {
-        toast({
+      toast({
         title: 'Name required',
         description: 'Please enter a name for the child',
         status: 'error',
         duration: 3000,
         isClosable: true,
-        });
-        return;
+      });
+      return;
     }
-    
+
     try {
-        await addChild({
+      await addChild({
         ...newChild,
-        family_id: family.id
-        });
-        
-        toast({
+        family_id: family.id,
+      });
+
+      toast({
         title: 'Child added',
         description: `${newChild.name} was added successfully`,
         status: 'success',
         duration: 3000,
         isClosable: true,
-        });
-        
-        // Reset form
-        setNewChild({
+      });
+
+      // Reset form
+      setNewChild({
         name: '',
-        base_allowance: 0
-        });
-        
-        onClose();
+        base_allowance: 0,
+      });
+
+      onClose();
     } catch (error) {
-        toast({
+      toast({
         title: 'Error adding child',
         description: error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
-        });
+      });
     }
-    };
-    
-    return (
+  };
+
+  return (
     <Box>
-        <Heading size="lg" mb={6}>Family Settings</Heading>
-        
-        <Card mb={6}>
+      <Heading size="lg" mb={6}>
+        Family Settings
+      </Heading>
+
+      <Card mb={6}>
         <CardHeader>
-            <Heading size="md">Family Members</Heading>
+          <Heading size="md">Family Members</Heading>
         </CardHeader>
         <CardBody>
-            <HStack mb={4} justify="space-between">
+          <HStack mb={4} justify="space-between">
             <Text>Manage your family members and their allowances</Text>
             <Button colorScheme="blue" size="sm" onClick={onOpen}>
-                Add Child
+              Add Child
             </Button>
-            </HStack>
-            
-            <Table size="sm">
+          </HStack>
+
+          <Table size="sm">
             <Thead>
-                <Tr>
+              <Tr>
                 <Th>Name</Th>
                 <Th isNumeric>Base Allowance</Th>
                 <Th>Actions</Th>
-                </Tr>
+              </Tr>
             </Thead>
             <Tbody>
-                {children?.map(child => (
+              {children?.map(child => (
                 <Tr key={child.id}>
-                    <Td>{child.name}</Td>
-                    <Td isNumeric>R{child.base_allowance.toFixed(2)}</Td>
-                    <Td>
+                  <Td>{child.name}</Td>
+                  <Td isNumeric>R{child.base_allowance.toFixed(2)}</Td>
+                  <Td>
                     <Button size="xs" variant="outline">
-                        Edit
+                      Edit
                     </Button>
-                    </Td>
+                  </Td>
                 </Tr>
-                ))}
-                {(!children || children.length === 0) && (
+              ))}
+              {(!children || children.length === 0) && (
                 <Tr>
-                    <Td colSpan={3} textAlign="center">
+                  <Td colSpan={3} textAlign="center">
                     No children added yet
-                    </Td>
+                  </Td>
                 </Tr>
-                )}
+              )}
             </Tbody>
-            </Table>
+          </Table>
         </CardBody>
-        </Card>
-        
-        <Card>
+      </Card>
+
+      <Card>
         <CardHeader>
-            <Heading size="md">Budget Cycle Settings</Heading>
+          <Heading size="md">Budget Cycle Settings</Heading>
         </CardHeader>
         <CardBody>
-            <Text mb={4}>
-            Configure your custom budget cycle and other settings
-            </Text>
-            
-            <FormControl mb={4}>
+          <Text mb={4}>Configure your custom budget cycle and other settings</Text>
+
+          <FormControl mb={4}>
             <FormLabel>Budget Cycle Start Day</FormLabel>
             <NumberInput defaultValue={25} min={1} max={28}>
-                <NumberInputField />
-                <NumberInputStepper>
+              <NumberInputField />
+              <NumberInputStepper>
                 <NumberIncrementStepper />
                 <NumberDecrementStepper />
-                </NumberInputStepper>
+              </NumberInputStepper>
             </NumberInput>
-            </FormControl>
-            
-            <FormControl mb={4}>
+          </FormControl>
+
+          <FormControl mb={4}>
             <FormLabel>Default Vacation Score</FormLabel>
             <NumberInput defaultValue={3} min={1} max={5}>
-                <NumberInputField />
-                <NumberInputStepper>
+              <NumberInputField />
+              <NumberInputStepper>
                 <NumberIncrementStepper />
                 <NumberDecrementStepper />
-                </NumberInputStepper>
+              </NumberInputStepper>
             </NumberInput>
-            </FormControl>
-            
-            <Button colorScheme="blue">
-            Save Settings
-            </Button>
+          </FormControl>
+
+          <Button colorScheme="blue">Save Settings</Button>
         </CardBody>
-        </Card>
-        
-        {/* Modal for adding a child */}
-        <Modal isOpen={isOpen} onClose={onClose}>
+      </Card>
+
+      {/* Modal for adding a child */}
+      <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-            <ModalHeader>Add Child</ModalHeader>
-            <ModalBody>
+          <ModalHeader>Add Child</ModalHeader>
+          <ModalBody>
             <VStack spacing={4}>
-                <FormControl isRequired>
+              <FormControl isRequired>
                 <FormLabel>Name</FormLabel>
                 <Input
-                    name="name"
-                    value={newChild.name}
-                    onChange={handleInputChange}
-                    placeholder="Child's name"
+                  name="name"
+                  value={newChild.name}
+                  onChange={handleInputChange}
+                  placeholder="Child's name"
                 />
-                </FormControl>
-                
-                <FormControl>
+              </FormControl>
+
+              <FormControl>
                 <FormLabel>Base Allowance</FormLabel>
                 <NumberInput
-                    min={0}
-                    precision={2}
-                    step={10}
-                    value={newChild.base_allowance}
-                    onChange={handleAllowanceChange}
+                  min={0}
+                  precision={2}
+                  step={10}
+                  value={newChild.base_allowance}
+                  onChange={handleAllowanceChange}
                 >
-                    <NumberInputField />
-                    <NumberInputStepper>
+                  <NumberInputField />
+                  <NumberInputStepper>
                     <NumberIncrementStepper />
                     <NumberDecrementStepper />
-                    </NumberInputStepper>
+                  </NumberInputStepper>
                 </NumberInput>
                 <Text fontSize="sm" color="gray.600" mt={1}>
-                    Monthly base amount before adjustments
+                  Monthly base amount before adjustments
                 </Text>
-                </FormControl>
+              </FormControl>
             </VStack>
-            </ModalBody>
-            <ModalFooter>
+          </ModalBody>
+          <ModalFooter>
             <Button variant="ghost" mr={3} onClick={onClose}>
-                Cancel
+              Cancel
             </Button>
-            <Button 
-                colorScheme="blue" 
-                onClick={handleAddChild}
-                isLoading={isAddingChild}
-            >
-                Add Child
+            <Button colorScheme="blue" onClick={handleAddChild} isLoading={isAddingChild}>
+              Add Child
             </Button>
-            </ModalFooter>
+          </ModalFooter>
         </ModalContent>
-        </Modal>
+      </Modal>
     </Box>
-    );
+  );
 }
 ```
 
@@ -2282,31 +2337,47 @@ export default function Settings() {
 import { useState } from 'react';
 import { Outlet, useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
-    Box, Flex, IconButton, Link, useDisclosure,
-    Drawer, DrawerOverlay, DrawerContent, DrawerCloseButton,
-    DrawerHeader, DrawerBody, VStack, HStack, Text,
-    Avatar, Menu, MenuButton, MenuList, MenuItem,
-    Container, Divider
+  Box,
+  Flex,
+  IconButton,
+  Link,
+  useDisclosure,
+  Drawer,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  DrawerHeader,
+  DrawerBody,
+  VStack,
+  HStack,
+  Text,
+  Avatar,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Container,
+  Divider,
 } from '@chakra-ui/react';
 import { HamburgerIcon, SettingsIcon, CalendarIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../context/AuthContext';
 import { useFamily } from '../../hooks/useFamily';
 
 export default function Layout() {
-    const { isOpen, onOpen, onClose } = useDisclosure();
-    const { user, signOut } = useAuth();
-    const { family, children } = useFamily();
-    const navigate = useNavigate();
-    
-    const handleSignOut = async () => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { user, signOut } = useAuth();
+  const { family, children } = useFamily();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
     await signOut();
     navigate('/login');
-    };
-    
-    return (
+  };
+
+  return (
     <Box minH="100vh">
-        {/* Header */}
-        <Flex
+      {/* Header */}
+      <Flex
         as="header"
         align="center"
         justify="space-between"
@@ -2315,155 +2386,146 @@ export default function Layout() {
         bg="white"
         borderBottomWidth="1px"
         shadow="sm"
-        >
+      >
         <HStack>
-            <IconButton
+          <IconButton
             icon={<HamburgerIcon />}
             variant="ghost"
             onClick={onOpen}
             display={{ base: 'flex', md: 'none' }}
             aria-label="Open menu"
-            />
-            <RouterLink to="/">
+          />
+          <RouterLink to="/">
             <Text fontSize="xl" fontWeight="bold">
-                Family Allowance Tracker
+              Family Allowance Tracker
             </Text>
-            </RouterLink>
+          </RouterLink>
         </HStack>
-        
+
         <HStack spacing={4}>
-            <Menu>
+          <Menu>
             <MenuButton as={Box} cursor="pointer">
-                <HStack>
+              <HStack>
                 <Avatar size="sm" name={user?.email} />
-                <Text display={{ base: 'none', md: 'block' }}>
-                    {family?.name || 'My Family'}
-                </Text>
+                <Text display={{ base: 'none', md: 'block' }}>{family?.name || 'My Family'}</Text>
                 <ChevronDownIcon />
-                </HStack>
+              </HStack>
             </MenuButton>
             <MenuList>
-                <MenuItem as={RouterLink} to="/settings">
+              <MenuItem as={RouterLink} to="/settings">
                 Settings
-                </MenuItem>
-                <MenuItem onClick={handleSignOut}>
-                Sign Out
-                </MenuItem>
+              </MenuItem>
+              <MenuItem onClick={handleSignOut}>Sign Out</MenuItem>
             </MenuList>
-            </Menu>
+          </Menu>
         </HStack>
-        </Flex>
-        
-        {/* Mobile drawer */}
-        <Drawer isOpen={isOpen} placement="left" onClose={onClose}>
+      </Flex>
+
+      {/* Mobile drawer */}
+      <Drawer isOpen={isOpen} placement="left" onClose={onClose}>
         <DrawerOverlay />
         <DrawerContent>
-            <DrawerCloseButton />
-            <DrawerHeader>Menu</DrawerHeader>
-            <DrawerBody>
+          <DrawerCloseButton />
+          <DrawerHeader>Menu</DrawerHeader>
+          <DrawerBody>
             <VStack align="start" spacing={4}>
-                <Link as={RouterLink} to="/parent" onClick={onClose}>
+              <Link as={RouterLink} to="/parent" onClick={onClose}>
                 <HStack>
-                    <CalendarIcon />
-                    <Text>Parent Dashboard</Text>
+                  <CalendarIcon />
+                  <Text>Parent Dashboard</Text>
                 </HStack>
-                </Link>
-                
-                <Divider />
-                
-                <Text fontWeight="bold">Children</Text>
-                {children?.map(child => (
-                <Link 
-                    key={child.id}
-                    as={RouterLink} 
-                    to={`/child/${child.id}`}
-                    pl={4}
-                    onClick={onClose}
+              </Link>
+
+              <Divider />
+
+              <Text fontWeight="bold">Children</Text>
+              {children?.map(child => (
+                <Link
+                  key={child.id}
+                  as={RouterLink}
+                  to={`/child/${child.id}`}
+                  pl={4}
+                  onClick={onClose}
                 >
-                    {child.name}
+                  {child.name}
                 </Link>
-                ))}
-                
-                <Divider />
-                
-                <Link as={RouterLink} to="/reports" onClick={onClose}>
+              ))}
+
+              <Divider />
+
+              <Link as={RouterLink} to="/reports" onClick={onClose}>
                 <HStack>
-                    <Icon as={ReportIcon} />
-                    <Text>Reports</Text>
+                  <Icon as={ReportIcon} />
+                  <Text>Reports</Text>
                 </HStack>
-                </Link>
-                
-                <Link as={RouterLink} to="/settings" onClick={onClose}>
+              </Link>
+
+              <Link as={RouterLink} to="/settings" onClick={onClose}>
                 <HStack>
-                    <SettingsIcon />
-                    <Text>Settings</Text>
+                  <SettingsIcon />
+                  <Text>Settings</Text>
                 </HStack>
-                </Link>
+              </Link>
             </VStack>
-            </DrawerBody>
+          </DrawerBody>
         </DrawerContent>
-        </Drawer>
-        
-        {/* Desktop sidebar */}
-        <Flex>
+      </Drawer>
+
+      {/* Desktop sidebar */}
+      <Flex>
         <Box
-            as="nav"
-            w="250px"
-            bg="gray.50"
-            p={4}
-            minH="calc(100vh - 73px)"
-            borderRightWidth="1px"
-            display={{ base: 'none', md: 'block' }}
+          as="nav"
+          w="250px"
+          bg="gray.50"
+          p={4}
+          minH="calc(100vh - 73px)"
+          borderRightWidth="1px"
+          display={{ base: 'none', md: 'block' }}
         >
-            <VStack align="start" spacing={4}>
+          <VStack align="start" spacing={4}>
             <Link as={RouterLink} to="/parent">
-                <HStack>
+              <HStack>
                 <CalendarIcon />
                 <Text>Parent Dashboard</Text>
-                </HStack>
+              </HStack>
             </Link>
-            
+
             <Divider />
-            
+
             <Text fontWeight="bold">Children</Text>
             {children?.map(child => (
-                <Link 
-                key={child.id}
-                as={RouterLink} 
-                to={`/child/${child.id}`}
-                pl={4}
-                >
+              <Link key={child.id} as={RouterLink} to={`/child/${child.id}`} pl={4}>
                 {child.name}
-                </Link>
+              </Link>
             ))}
-            
+
             <Divider />
-            
+
             <Link as={RouterLink} to="/reports">
-                <HStack>
+              <HStack>
                 <Icon as={ReportIcon} />
                 <Text>Reports</Text>
-                </HStack>
+              </HStack>
             </Link>
-            
+
             <Link as={RouterLink} to="/settings">
-                <HStack>
+              <HStack>
                 <SettingsIcon />
                 <Text>Settings</Text>
-                </HStack>
+              </HStack>
             </Link>
-            </VStack>
+          </VStack>
         </Box>
-        
+
         {/* Main content */}
         <Box flex="1" p={6} bg="gray.50">
-            <Container maxW="container.xl">
+          <Container maxW="container.xl">
             <Outlet />
-            </Container>
+          </Container>
         </Box>
-        </Flex>
+      </Flex>
     </Box>
-    );
+  );
 }
 ```
 
@@ -2477,245 +2539,258 @@ export default function Layout() {
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import {
-    Box, Button, FormControl, FormLabel, Input,
-    VStack, Heading, Text, Link, useToast,
-    InputGroup, InputRightElement, IconButton,
-    Container, Card, CardBody, Tabs, TabList,
-    Tab, TabPanels, TabPanel
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  VStack,
+  Heading,
+  Text,
+  Link,
+  useToast,
+  InputGroup,
+  InputRightElement,
+  IconButton,
+  Container,
+  Card,
+  CardBody,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-    const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [loginForm, setLoginForm] = useState({
-    email: '',
-    password: ''
-    });
-    const [signupForm, setSignupForm] = useState({
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginForm, setLoginForm] = useState({
     email: '',
     password: '',
-    familyName: ''
-    });
-    
-    const { user, signIn, signUp } = useAuth();
-    const navigate = useNavigate();
-    const toast = useToast();
-    
-    // Redirect if already logged in
-    if (user) {
+  });
+  const [signupForm, setSignupForm] = useState({
+    email: '',
+    password: '',
+    familyName: '',
+  });
+
+  const { user, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  // Redirect if already logged in
+  if (user) {
     return <Navigate to="/" replace />;
-    }
-    
-    const handleLoginChange = (e) => {
+  }
+
+  const handleLoginChange = e => {
     const { name, value } = e.target;
     setLoginForm(prev => ({
-        ...prev,
-        [name]: value
+      ...prev,
+      [name]: value,
     }));
-    };
-    
-    const handleSignupChange = (e) => {
+  };
+
+  const handleSignupChange = e => {
     const { name, value } = e.target;
     setSignupForm(prev => ({
-        ...prev,
-        [name]: value
+      ...prev,
+      [name]: value,
     }));
-    };
-    
-    const handleLogin = async (e) => {
+  };
+
+  const handleLogin = async e => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-        const { error } = await signIn({
+      const { error } = await signIn({
         email: loginForm.email,
-        password: loginForm.password
-        });
-        
-        if (error) throw error;
-        
-        // Success - will auto-navigate due to auth state change
+        password: loginForm.password,
+      });
+
+      if (error) throw error;
+
+      // Success - will auto-navigate due to auth state change
     } catch (error) {
-        toast({
+      toast({
         title: 'Login failed',
         description: error.message,
         status: 'error',
         duration: 5000,
         isClosable: true,
-        });
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-    };
-    
-    const handleSignup = async (e) => {
+  };
+
+  const handleSignup = async e => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-        const { error } = await signUp({
+      const { error } = await signUp({
         email: signupForm.email,
         password: signupForm.password,
         options: {
-            data: {
-            family_name: signupForm.familyName
-            }
-        }
-        });
-        
-        if (error) throw error;
-        
-        toast({
+          data: {
+            family_name: signupForm.familyName,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
         title: 'Account created',
         description: 'Please check your email to confirm your account',
         status: 'success',
         duration: 5000,
         isClosable: true,
-        });
-        
+      });
     } catch (error) {
-        toast({
+      toast({
         title: 'Signup failed',
         description: error.message,
         status: 'error',
         duration: 5000,
         isClosable: true,
-        });
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-    };
-    
-    return (
+  };
+
+  return (
     <Box minH="100vh" py={12} px={4} bg="gray.50">
-        <Container maxW="md">
+      <Container maxW="md">
         <Card>
-            <CardBody>
+          <CardBody>
             <VStack spacing={6} align="center" w="full">
-                <Heading as="h1" size="xl">
+              <Heading as="h1" size="xl">
                 Family Allowance Tracker
-                </Heading>
-                
-                <Text color="gray.600">
-                Track your children's allowances with ease
-                </Text>
-                
-                <Tabs isFitted variant="enclosed" width="full">
+              </Heading>
+
+              <Text color="gray.600">Track your children's allowances with ease</Text>
+
+              <Tabs isFitted variant="enclosed" width="full">
                 <TabList mb="1em">
-                    <Tab>Login</Tab>
-                    <Tab>Sign Up</Tab>
+                  <Tab>Login</Tab>
+                  <Tab>Sign Up</Tab>
                 </TabList>
                 <TabPanels>
-                    <TabPanel>
+                  <TabPanel>
                     <form onSubmit={handleLogin}>
-                        <VStack spacing={4}>
+                      <VStack spacing={4}>
                         <FormControl isRequired>
-                            <FormLabel>Email</FormLabel>
-                            <Input
+                          <FormLabel>Email</FormLabel>
+                          <Input
                             name="email"
                             type="email"
                             value={loginForm.email}
                             onChange={handleLoginChange}
-                            />
+                          />
                         </FormControl>
-                        
+
                         <FormControl isRequired>
-                            <FormLabel>Password</FormLabel>
-                            <InputGroup>
+                          <FormLabel>Password</FormLabel>
+                          <InputGroup>
                             <Input
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={loginForm.password}
-                                onChange={handleLoginChange}
+                              name="password"
+                              type={showPassword ? 'text' : 'password'}
+                              value={loginForm.password}
+                              onChange={handleLoginChange}
                             />
                             <InputRightElement>
-                                <IconButton
+                              <IconButton
                                 icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
                                 variant="ghost"
                                 onClick={() => setShowPassword(!showPassword)}
                                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                />
+                              />
                             </InputRightElement>
-                            </InputGroup>
+                          </InputGroup>
                         </FormControl>
-                        
+
                         <Button
-                            type="submit"
-                            colorScheme="blue"
-                            width="full"
-                            mt={4}
-                            isLoading={isLoading}
+                          type="submit"
+                          colorScheme="blue"
+                          width="full"
+                          mt={4}
+                          isLoading={isLoading}
                         >
-                            Sign In
+                          Sign In
                         </Button>
-                        </VStack>
+                      </VStack>
                     </form>
-                    </TabPanel>
-                    
-                    <TabPanel>
+                  </TabPanel>
+
+                  <TabPanel>
                     <form onSubmit={handleSignup}>
-                        <VStack spacing={4}>
+                      <VStack spacing={4}>
                         <FormControl isRequired>
-                            <FormLabel>Email</FormLabel>
-                            <Input
+                          <FormLabel>Email</FormLabel>
+                          <Input
                             name="email"
                             type="email"
                             value={signupForm.email}
                             onChange={handleSignupChange}
-                            />
+                          />
                         </FormControl>
-                        
+
                         <FormControl isRequired>
-                            <FormLabel>Password</FormLabel>
-                            <InputGroup>
+                          <FormLabel>Password</FormLabel>
+                          <InputGroup>
                             <Input
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={signupForm.password}
-                                onChange={handleSignupChange}
+                              name="password"
+                              type={showPassword ? 'text' : 'password'}
+                              value={signupForm.password}
+                              onChange={handleSignupChange}
                             />
                             <InputRightElement>
-                                <IconButton
+                              <IconButton
                                 icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
                                 variant="ghost"
                                 onClick={() => setShowPassword(!showPassword)}
                                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                />
+                              />
                             </InputRightElement>
-                            </InputGroup>
+                          </InputGroup>
                         </FormControl>
-                        
+
                         <FormControl isRequired>
-                            <FormLabel>Family Name</FormLabel>
-                            <Input
+                          <FormLabel>Family Name</FormLabel>
+                          <Input
                             name="familyName"
                             value={signupForm.familyName}
                             onChange={handleSignupChange}
-                            />
+                          />
                         </FormControl>
-                        
+
                         <Button
-                            type="submit"
-                            colorScheme="blue"
-                            width="full"
-                            mt={4}
-                            isLoading={isLoading}
+                          type="submit"
+                          colorScheme="blue"
+                          width="full"
+                          mt={4}
+                          isLoading={isLoading}
                         >
-                            Create Account
+                          Create Account
                         </Button>
-                        </VStack>
+                      </VStack>
                     </form>
-                    </TabPanel>
+                  </TabPanel>
                 </TabPanels>
-                </Tabs>
+              </Tabs>
             </VStack>
-            </CardBody>
+          </CardBody>
         </Card>
-        </Container>
+      </Container>
     </Box>
-    );
+  );
 }
 ```
 
@@ -2731,11 +2806,11 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
-    base: '/family-allowance-tracker/',
-    build: {
+  plugins: [react()],
+  base: '/family-allowance-tracker/',
+  build: {
     outDir: 'dist',
-    },
+  },
 });
 
 // Add a public/_redirects file for SPA routing

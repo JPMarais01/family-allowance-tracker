@@ -13,6 +13,12 @@ npm run lint:fix    # Fix ESLint issues
 npm run format      # Run Prettier
 npm run format:check # Check formatting with Prettier
 npm run preview     # Preview production build
+
+# Testing
+npm test            # Run tests once
+npm run test:watch  # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+npm run test:ui     # Run tests with UI viewer
 ```
 
 ## Code Style Guidelines
