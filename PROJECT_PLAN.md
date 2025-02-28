@@ -165,7 +165,7 @@ npm install react-router-dom @chakra-ui/react @emotion/react @emotion/styled fra
 npm install @supabase/supabase-js react-query date-fns recharts
 ```
 
-3. **Setup Supabase Integration**
+3. **Setup Supabase Integration** - COMPLETED
 
 - Title: Configure Supabase client and authentication
 - Description: Create Supabase project, set up authentication, and integrate with React application.
