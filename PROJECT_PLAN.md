@@ -180,7 +180,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
-4. **Create Database Schema**
+4. **Create Database Schema** - COMPLETED
 
 - Title: Design and implement database schema in Supabase
 - Description: Create tables for users, children, scores, and settings.
@@ -403,7 +403,7 @@ EXECUTE FUNCTION update_updated_at_column();
 
 ```
 
-1. **Set Up GitHub Actions for Deployment**
+5. **Set Up GitHub Actions for Deployment**
 
 - Title: Configure CI/CD pipeline with GitHub Actions
 - Description: Create a workflow to automatically build and deploy to GitHub Pages.
