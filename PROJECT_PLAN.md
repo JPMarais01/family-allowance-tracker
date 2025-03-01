@@ -22,25 +22,25 @@ The application aims to:
 - Simple login for children with limited view access
 - Password protection for family data
 
-1. **Daily Scoring System**
+2. **Daily Scoring System**
 
 - 1-5 rating scale for each child
 - Optional notes field for context
 - Visual indicators of scoring trends
 
-1. **Vacation Day Management**
+3. **Vacation Day Management**
 
 - Mark days as "vacation" with a default score (3)
 - Bulk selection for longer vacation periods
 - Visual differentiation of vacation days in the calendar
 
-1. **Custom Budget Cycle**
+4. **Custom Budget Cycle**
 
 - Monthly periods from 25th to 24th of next month
 - Automatic calculation of monthly averages
 - Summary generation for allowance determination
 
-1. **Dashboards**
+5. **Dashboards**
 
 - Parent dashboard with scoring controls
 - Child dashboard showing personal progress
@@ -53,7 +53,7 @@ The application aims to:
 - Badges for consistent good scores
 - Milestone recognition
 
-1. **Notification System**
+2. **Notification System**
 
 - Daily reminders to input scores
 - End-of-cycle summary alerts
@@ -180,7 +180,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
-4. **Create Database Schema**
+4. **Create Database Schema** - COMPLETED
 
 - Title: Design and implement database schema in Supabase
 - Description: Create tables for users, children, scores, and settings.
@@ -210,33 +210,45 @@ CREATE TABLE family_members (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Family settings table
+CREATE TABLE family_settings (
+    family_id UUID PRIMARY KEY REFERENCES families(id) ON DELETE CASCADE,
+    budget_cycle_start_day INTEGER NOT NULL DEFAULT 25 CHECK (budget_cycle_start_day BETWEEN 1 AND 28),
+    vacation_default_score INTEGER DEFAULT 3 CHECK (vacation_default_score >= 1 AND vacation_default_score <= 5),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Budget cycles table
+CREATE TABLE budget_cycles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL CHECK (end_date > start_date),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Daily scores table
 CREATE TABLE daily_scores (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  member_id UUID REFERENCES family_members(id) ON DELETE CASCADE,
+  family_member_id UUID REFERENCES family_members(id) ON DELETE CASCADE,
+  budget_cycle_id UUID REFERENCES budget_cycles(id) ON DELETE CASCADE,
   score INTEGER CHECK (score >= 1 AND score <= 5),
   date DATE NOT NULL,
   is_vacation BOOLEAN DEFAULT FALSE,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(member_id, date)
-);
-
--- Family settings table
-CREATE TABLE family_settings (
-    family_id UUID PRIMARY KEY REFERENCES families(id) ON DELETE CASCADE,
-    budget_cycle_start_day INTEGER NOT NULL DEFAULT 25,
-    vacation_default_score INTEGER DEFAULT 3 CHECK (vacation_default_score >= 1 AND vacation_default_score <= 5),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  UNIQUE(family_member_id, date)
 );
 
 -- Row level security policies
 ALTER TABLE families ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE daily_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budget_cycles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_scores ENABLE ROW LEVEL SECURITY;
 
 -- Policies for families
 CREATE POLICY "Families are viewable by owners"
@@ -259,6 +271,38 @@ CREATE POLICY "Family members viewable by family members"
         )
     );
 
+CREATE POLICY "Family settings viewable by family members"
+    ON family_settings FOR SELECT
+    USING (
+        family_id IN (
+        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Family settings editable by family parents"
+    ON family_settings FOR UPDATE
+    USING (
+        family_id IN (
+        SELECT family_id FROM family_members WHERE user_id = auth.uid() AND role = 'parent'
+        )
+    );
+
+CREATE POLICY "Budget cycles viewable by family members"
+    ON budget_cycles FOR SELECT
+    USING (
+        family_id IN (
+        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Budget cycles insertable by family parents"
+    ON budget_cycles FOR INSERT
+    WITH CHECK (
+        family_id IN (
+        SELECT family_id FROM family_members WHERE user_id = auth.uid() AND role = 'parent'
+        )
+    );
+
 CREATE POLICY "Daily scores viewable by family based on role"
     ON daily_scores FOR SELECT
     USING (
@@ -278,7 +322,85 @@ CREATE POLICY "Daily scores viewable by family based on role"
         )
     );
 
--- Add similar policies for all tables
+CREATE POLICY "Daily scores insertable by family parents"
+    ON daily_scores FOR INSERT
+    WITH CHECK (
+        family_id IN (
+        SELECT family_id FROM family_members WHERE user_id = auth.uid() AND role = 'parent'
+        )
+    );
+
+CREATE POLICY "Daily scores updatable by family parents"
+    ON daily_scores FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM family_members fm
+            WHERE fm.user_id = auth.uid()
+            AND fm.role = 'parent'
+            AND fm.family_id = (
+                SELECT family_id FROM family_members WHERE id = member_id
+            )
+        )
+    );
+
+-- Add delete policy for daily scores
+CREATE POLICY "Daily scores deletable by family parents"
+    ON daily_scores FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM family_members fm
+            WHERE fm.user_id = auth.uid()
+            AND fm.role = 'parent'
+            AND fm.family_id = (
+                SELECT family_id FROM family_members WHERE id = member_id
+            )
+        )
+    );
+
+-- Add indexes for common queries
+CREATE INDEX idx_daily_scores_date ON daily_scores(date);
+CREATE INDEX idx_daily_scores_member_date ON daily_scores(family_member_id, date);
+CREATE INDEX idx_family_members_role ON family_members(family_id, role);
+
+-- Create function for updating timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger for updating timestamp
+CREATE TRIGGER update_families_updated_at
+BEFORE UPDATE ON families
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for updating timestamp
+CREATE TRIGGER update_family_members_updated_at
+BEFORE UPDATE ON family_members
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for updating timestamp
+CREATE TRIGGER update_family_settings_updated_at
+BEFORE UPDATE ON family_settings
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for updating timestamp
+CREATE TRIGGER update_budget_cycles_updated_at
+BEFORE UPDATE ON budget_cycles
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for updating timestamp
+CREATE TRIGGER update_daily_scores_updated_at
+BEFORE UPDATE ON daily_scores
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 ```
 
 5. **Set Up GitHub Actions for Deployment**
