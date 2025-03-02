@@ -2,6 +2,7 @@ import { Box, Button, Field, Heading, Input, Link, Text, VStack } from '@chakra-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
+import { handleAuthError } from '../../lib/errorHandling';
 import { toaster } from '../ui/toast-instance';
 
 export function ForgotPassword(): React.ReactElement {
@@ -44,11 +45,7 @@ export function ForgotPassword(): React.ReactElement {
       const { error } = await resetPassword(email);
 
       if (error) {
-        toaster.create({
-          title: 'Error',
-          description: error.message || 'Failed to send reset link',
-          type: 'error',
-        });
+        handleAuthError(error);
       } else {
         setIsSubmitted(true);
         toaster.create({
@@ -58,11 +55,7 @@ export function ForgotPassword(): React.ReactElement {
         });
       }
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        type: 'error',
-      });
+      handleAuthError(error);
       console.error('Password reset error:', error);
     } finally {
       setIsLoading(false);

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toaster } from '../../components/ui/toast-instance';
 import { useAuth } from '../../context/useAuth';
+import { handleAuthError } from '../../lib/errorHandling';
 
 export function Login(): React.ReactElement {
   const [email, setEmail] = useState('');
@@ -54,11 +55,7 @@ export function Login(): React.ReactElement {
       const { error } = await signIn(email, password);
 
       if (error) {
-        toaster.create({
-          title: 'Error',
-          description: error.message || 'Failed to sign in',
-          type: 'error',
-        });
+        handleAuthError(error);
       } else {
         toaster.create({
           title: 'Success',
@@ -68,11 +65,7 @@ export function Login(): React.ReactElement {
         navigate('/dashboard');
       }
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        type: 'error',
-      });
+      handleAuthError(error);
       console.error('Login error:', error);
     } finally {
       setIsLoading(false);

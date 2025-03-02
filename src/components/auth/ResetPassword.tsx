@@ -1,6 +1,7 @@
 import { Box, Button, Field, Heading, Input, Text, VStack } from '@chakra-ui/react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { handleAuthError } from '../../lib/errorHandling';
 import { supabase } from '../../lib/supabase';
 import { toaster } from '../ui/toast-instance';
 
@@ -71,11 +72,7 @@ export function ResetPassword(): React.ReactElement {
       });
 
       if (error) {
-        toaster.create({
-          title: 'Error',
-          description: error.message || 'Failed to reset password',
-          type: 'error',
-        });
+        handleAuthError(error);
       } else {
         setIsSuccess(true);
         toaster.create({
@@ -85,11 +82,7 @@ export function ResetPassword(): React.ReactElement {
         });
       }
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        type: 'error',
-      });
+      handleAuthError(error);
       console.error('Password reset error:', error);
     } finally {
       setIsLoading(false);

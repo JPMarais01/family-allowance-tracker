@@ -43,7 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const [user, setUser] = useState<User | null>(null);
   const [familyMember, setFamilyMember] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const [loginAttempts, setLoginAttempts] = useState<
+    Record<string, { count: number; lastAttempt: number }>
+  >({});
   useEffect(() => {
     // Get the current session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -112,10 +114,39 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     data: Session | null;
   }> => {
     try {
+      // Check for too many attempts
+      const now = Date.now();
+      const attempts = loginAttempts[email] || { count: 0, lastAttempt: 0 };
+
+      // If more than 5 attempts in 15 minutes (900000ms), block the attempt
+      if (attempts.count >= 5 && now - attempts.lastAttempt < 900000) {
+        return {
+          data: null,
+          error: new Error('Too many login attempts. Please try again later.'),
+        };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      // Update attempts counter on failure
+      if (error) {
+        setLoginAttempts(prev => ({
+          ...prev,
+          [email]: {
+            count: (prev[email]?.count || 0) + 1,
+            lastAttempt: now,
+          },
+        }));
+      } else {
+        // Reset counter on success
+        setLoginAttempts(prev => ({
+          ...prev,
+          [email]: { count: 0, lastAttempt: 0 },
+        }));
+      }
 
       return { data: data.session, error };
     } catch (error) {

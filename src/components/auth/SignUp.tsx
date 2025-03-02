@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
+import { handleAuthError } from '../../lib/errorHandling';
 import { toaster } from '../ui/toast-instance';
 
 export function SignUp(): React.ReactElement {
@@ -35,12 +36,17 @@ export function SignUp(): React.ReactElement {
       isValid = false;
     }
 
-    // Validate password
+    // Validate password with stronger requirements
     if (!password) {
       setPasswordError('Password is required');
       isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    } else if (password.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      isValid = false;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      setPasswordError(
+        'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      );
       isValid = false;
     }
 
@@ -69,11 +75,7 @@ export function SignUp(): React.ReactElement {
       const { error } = await signUp(email, password);
 
       if (error) {
-        toaster.create({
-          title: 'Error',
-          description: error.message || 'Failed to sign up',
-          type: 'error',
-        });
+        handleAuthError(error);
       } else {
         toaster.create({
           title: 'Success',
@@ -83,11 +85,7 @@ export function SignUp(): React.ReactElement {
         navigate('/login');
       }
     } catch (error) {
-      toaster.create({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        type: 'error',
-      });
+      handleAuthError(error);
       console.error('Signup error:', error);
     } finally {
       setIsLoading(false);
