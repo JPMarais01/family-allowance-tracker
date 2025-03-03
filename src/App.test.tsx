@@ -6,7 +6,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { ResetPassword } from './components/auth/ResetPassword';
 import { SignUp } from './components/auth/SignUp';
 import { Unauthorized } from './components/auth/Unauthorized';
-import { AuthProvider } from './context/AuthContext'; // Import AuthProvider
+import { AuthProvider } from './contexts/auth-context'; // Import AuthProvider
 import { render, screen, waitFor } from './test/utils';
 
 // Mock react-router-dom

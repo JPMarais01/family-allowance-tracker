@@ -1,9 +1,9 @@
 import React from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Navigate, Route, HashRouter as Router, Routes } from 'react-router-dom';
 import './App.css';
 import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './contexts/auth-context';
 
 // Auth Components
 import { ForgotPassword } from './components/auth/ForgotPassword';

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Session, User } from '@supabase/supabase-js';
 import { createContext, ReactNode, useEffect, useState } from 'react';
-import { toaster } from '../components/ui/toast-instance';
+import { toast } from '../hooks/use-toast';
 import { supabase } from '../lib/supabase';
 
 // Define types for our context
@@ -86,10 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
       if (error) {
         console.error('Error fetching family member:', error);
-        toaster.create({
+        toast({
           title: 'Error',
           description: 'Failed to fetch family member data',
-          type: 'error',
+          variant: 'destructive',
         });
         return;
       }
@@ -97,10 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
       setFamilyMember(data || null);
     } catch (error) {
       console.error('Error in fetchFamilyMember:', error);
-      toaster.create({
+      toast({
         title: 'Error',
         description: 'An unexpected error occurred while fetching family member data',
-        type: 'error',
+        variant: 'destructive',
       });
     }
   }

@@ -1,29 +1,33 @@
 'use client';
 
-import { Toaster as ChakraToaster, Portal, Spinner, Stack, Toast } from '@chakra-ui/react';
-import React from 'react';
-import { toaster } from './toast-instance';
+import { useToast } from '../../hooks/use-toast';
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from './toast';
 
-export const Toaster: React.FC = () => {
+export function Toaster(): React.ReactNode {
+  const { toasts } = useToast();
+
   return (
-    <Portal>
-      <ChakraToaster toaster={toaster} insetInline={{ mdDown: '4' }}>
-        {toast => (
-          <Toast.Root width={{ md: 'sm' }}>
-            {toast.type === 'loading' ? (
-              <Spinner size="sm" color="blue.solid" />
-            ) : (
-              <Toast.Indicator />
-            )}
-            <Stack gap="1" flex="1" maxWidth="100%">
-              {toast.title && <Toast.Title>{toast.title}</Toast.Title>}
-              {toast.description && <Toast.Description>{toast.description}</Toast.Description>}
-            </Stack>
-            {toast.action && <Toast.ActionTrigger>{toast.action.label}</Toast.ActionTrigger>}
-            {toast.meta?.closable && <Toast.CloseTrigger />}
-          </Toast.Root>
-        )}
-      </ChakraToaster>
-    </Portal>
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <Toast key={id} {...props} className="mb-2">
+            <div className="grid gap-1 flex-1 w-full">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && <ToastDescription>{description}</ToastDescription>}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        );
+      })}
+      <ToastViewport />
+    </ToastProvider>
   );
-};
+}

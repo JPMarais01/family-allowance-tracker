@@ -1,4 +1,4 @@
-import { toaster } from '../components/ui/toast-instance';
+import { toast } from '../hooks/use-toast';
 
 // Error message mapping
 const errorMessages: Record<string, string> = {
@@ -38,9 +38,9 @@ export function handleAuthError(
   const userFriendlyMessage = errorMessages[errorMessage] || fallbackMessage;
 
   // Display toast
-  toaster.create({
+  toast({
     title: 'Error',
     description: userFriendlyMessage,
-    type: 'error',
+    variant: 'destructive',
   });
 }
