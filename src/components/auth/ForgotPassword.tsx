@@ -1,9 +1,11 @@
-import { Box, Button, Field, Heading, Input, Link, Text, VStack } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/useAuth';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { useAuth } from '../../hooks/use-auth';
+import { toast } from '../../hooks/use-toast';
 import { handleAuthError } from '../../lib/errorHandling';
-import { toaster } from '../ui/toast-instance';
 
 export function ForgotPassword(): React.ReactElement {
   const [email, setEmail] = useState('');
@@ -48,10 +50,10 @@ export function ForgotPassword(): React.ReactElement {
         handleAuthError(error);
       } else {
         setIsSubmitted(true);
-        toaster.create({
+        toast({
           title: 'Success',
           description: 'Password reset link sent to your email',
-          type: 'success',
+          variant: 'default',
         });
       }
     } catch (error) {
@@ -63,53 +65,54 @@ export function ForgotPassword(): React.ReactElement {
   };
 
   return (
-    <Box maxW="md" mx="auto" mt={8} p={6} borderWidth={1} borderRadius="lg" boxShadow="lg">
-      <VStack gap={4} as="form" onSubmit={handleSubmit}>
-        <Heading size="lg">Reset Password</Heading>
+    <div className="w-full max-w-md mx-auto mt-8 p-6 border rounded-lg shadow-lg">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
+        <h1 className="text-2xl font-bold">Reset Password</h1>
 
         {isSubmitted ? (
           <>
-            <Text textAlign="center" py={4}>
+            <p className="text-center py-4">
               We've sent a password reset link to your email. Please check your inbox.
-            </Text>
-            <Button colorScheme="blue" width="full" onClick={() => navigate('/login')}>
+            </p>
+            <Button className="w-full" onClick={() => navigate('/login')}>
               Back to Login
             </Button>
           </>
         ) : (
           <>
-            <Text>Enter your email address and we'll send you a link to reset your password.</Text>
+            <p>Enter your email address and we'll send you a link to reset your password.</p>
 
-            <Field.Root invalid={!!emailError} required>
-              <Field.Label>Email</Field.Label>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="font-medium">
+                Email <span className="text-red-500">*</span>
+              </Label>
               <Input
+                id="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="your.email@example.com"
+                className={emailError ? 'border-red-500' : ''}
               />
-              {emailError && <Field.ErrorText>{emailError}</Field.ErrorText>}
-            </Field.Root>
+              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+            </div>
 
-            <Button
-              colorScheme="blue"
-              width="full"
-              mt={4}
-              type="submit"
-              loading={isLoading}
-              loadingText="Sending"
-            >
-              Send Reset Link
+            <Button className="w-full mt-4" type="submit" disabled={isLoading}>
+              {isLoading ? 'Sending...' : 'Send Reset Link'}
             </Button>
 
-            <Text mt={2}>
-              <Link color="blue.500" onClick={() => navigate('/login')}>
+            <p className="mt-2 text-sm">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-blue-500 hover:underline"
+              >
                 Back to Login
-              </Link>
-            </Text>
+              </button>
+            </p>
           </>
         )}
-      </VStack>
-    </Box>
+      </form>
+    </div>
   );
 }

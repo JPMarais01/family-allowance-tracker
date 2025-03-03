@@ -1,7 +1,7 @@
-import { Center, Spinner } from '@chakra-ui/react';
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../context/useAuth';
+import { Spinner } from '../../components/ui/spinner';
+import { useAuth } from '../../hooks/use-auth';
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -17,9 +17,9 @@ export function ProtectedRoute({
   // Show loading spinner while checking authentication
   if (loading) {
     return (
-      <Center h="100vh">
-        <Spinner size="xl" color="blue.500" />
-      </Center>
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="h-8 w-8 text-blue-500" />
+      </div>
     );
   }
 

@@ -1,9 +1,11 @@
-import { Box, Button, Field, Heading, Input, Link, Text, VStack } from '@chakra-ui/react';
 import { Eye, EyeOff } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toaster } from '../../components/ui/toast-instance';
-import { useAuth } from '../../context/useAuth';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { useAuth } from '../../hooks/use-auth';
+import { toast } from '../../hooks/use-toast';
 import { handleAuthError } from '../../lib/errorHandling';
 
 export function Login(): React.ReactElement {
@@ -57,10 +59,10 @@ export function Login(): React.ReactElement {
       if (error) {
         handleAuthError(error);
       } else {
-        toaster.create({
+        toast({
           title: 'Success',
           description: 'Signed in successfully',
-          type: 'success',
+          variant: 'default',
         });
         navigate('/dashboard');
       }
@@ -77,90 +79,77 @@ export function Login(): React.ReactElement {
   };
 
   return (
-    <Box
-      width={{ base: '90%', sm: '80%', md: '70%', lg: '60%', xl: '50%' }}
-      minW="md"
-      maxW="lg"
-      mx="auto"
-      mt={8}
-      p={6}
-      borderWidth={1}
-      borderRadius="lg"
-      boxShadow="lg"
-    >
-      <VStack gap={4} as="form" onSubmit={handleSubmit} width="100%" align="stretch">
-        <Heading size="lg">Sign In</Heading>
+    <div className="w-full max-w-lg mx-auto mt-8 p-6 border rounded-lg shadow-lg">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
+        <h1 className="text-2xl font-bold">Sign In</h1>
 
-        <Field.Root invalid={!!emailError} required>
-          <Field.Label>Email</Field.Label>
+        <div className="space-y-2">
+          <Label htmlFor="email" className="font-medium">
+            Email <span className="text-red-500">*</span>
+          </Label>
           <Input
+            id="email"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="your.email@example.com"
-            width="100%"
+            className={emailError ? 'border-red-500' : ''}
           />
-          {emailError && <Field.ErrorText>{emailError}</Field.ErrorText>}
-        </Field.Root>
+          {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+        </div>
 
-        <Field.Root invalid={!!passwordError} required width="100%">
-          <Field.Label>Password</Field.Label>
-          <Box position="relative" width="100%">
+        <div className="space-y-2">
+          <Label htmlFor="password" className="font-medium">
+            Password <span className="text-red-500">*</span>
+          </Label>
+          <div className="relative">
             <Input
+              id="password"
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Enter your password"
-              pr="4.5rem"
-              width="100%"
+              className={passwordError ? 'border-red-500 pr-10' : 'pr-10'}
             />
             <Button
-              h="1.75rem"
-              size="xs"
-              position="absolute"
-              right="8px"
-              top="50%"
-              transform="translateY(-50%)"
-              onClick={toggleShowPassword}
+              type="button"
               variant="ghost"
-              px={2}
-              minW="auto"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={toggleShowPassword}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
-          </Box>
-          {passwordError && <Field.ErrorText>{passwordError}</Field.ErrorText>}
-        </Field.Root>
+          </div>
+          {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
+        </div>
 
-        <Button
-          colorScheme="blue"
-          width="full"
-          mt={4}
-          type="submit"
-          loading={isLoading}
-          loadingText="Signing In"
-          variant="solid"
-          bg="blue.500"
-          color="white"
-          _hover={{ bg: 'blue.600' }}
-        >
-          Sign In
+        <Button className="w-full mt-4" type="submit" disabled={isLoading}>
+          {isLoading ? 'Signing In...' : 'Sign In'}
         </Button>
 
-        <Text mt={2}>
+        <p className="mt-2 text-sm">
           Don't have an account?{' '}
-          <Link color="blue.500" onClick={() => navigate('/signup')}>
+          <button
+            type="button"
+            onClick={() => navigate('/signup')}
+            className="text-blue-500 hover:underline"
+          >
             Sign Up
-          </Link>
-        </Text>
+          </button>
+        </p>
 
-        <Text>
-          <Link color="blue.500" onClick={() => navigate('/forgot-password')}>
+        <p className="text-sm">
+          <button
+            type="button"
+            onClick={() => navigate('/forgot-password')}
+            className="text-blue-500 hover:underline"
+          >
             Forgot Password?
-          </Link>
-        </Text>
-      </VStack>
-    </Box>
+          </button>
+        </p>
+      </form>
+    </div>
   );
 }

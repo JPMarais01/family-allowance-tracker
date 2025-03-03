@@ -1,9 +1,12 @@
-import { Box, Button, Field, Heading, Input, Text, VStack } from '@chakra-ui/react';
+import { Eye, EyeOff } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { toast } from '../../hooks/use-toast';
 import { handleAuthError } from '../../lib/errorHandling';
 import { supabase } from '../../lib/supabase';
-import { toaster } from '../ui/toast-instance';
 
 export function ResetPassword(): React.ReactElement {
   const [password, setPassword] = useState('');
@@ -20,10 +23,10 @@ export function ResetPassword(): React.ReactElement {
     // Check if we have the access token in the URL
     const { hash } = window.location;
     if (!hash || !hash.includes('access_token')) {
-      toaster.create({
+      toast({
         title: 'Error',
         description: 'Invalid or expired reset link',
-        type: 'error',
+        variant: 'destructive',
       });
       navigate('/forgot-password');
     }
@@ -75,10 +78,10 @@ export function ResetPassword(): React.ReactElement {
         handleAuthError(error);
       } else {
         setIsSuccess(true);
-        toaster.create({
+        toast({
           title: 'Success',
           description: 'Your password has been reset successfully',
-          type: 'success',
+          variant: 'default',
         });
       }
     } catch (error) {
@@ -94,72 +97,71 @@ export function ResetPassword(): React.ReactElement {
   };
 
   return (
-    <Box maxW="md" mx="auto" mt={8} p={6} borderWidth={1} borderRadius="lg" boxShadow="lg">
-      <VStack gap={4} as="form" onSubmit={handleSubmit}>
-        <Heading size="lg">Reset Your Password</Heading>
+    <div className="w-full max-w-md mx-auto mt-8 p-6 border rounded-lg shadow-lg">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
+        <h1 className="text-2xl font-bold">Reset Your Password</h1>
 
         {isSuccess ? (
           <>
-            <Text textAlign="center" py={4}>
-              Your password has been reset successfully.
-            </Text>
-            <Button colorScheme="blue" width="full" onClick={() => navigate('/login')}>
+            <p className="text-center py-4">Your password has been reset successfully.</p>
+            <Button className="w-full" onClick={() => navigate('/login')}>
               Go to Login
             </Button>
           </>
         ) : (
           <>
-            <Text>Enter your new password below.</Text>
+            <p>Enter your new password below.</p>
 
-            <Field.Root invalid={!!passwordError} required>
-              <Field.Label>New Password</Field.Label>
-              <Box position="relative">
+            <div className="space-y-2">
+              <Label htmlFor="password" className="font-medium">
+                New Password <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
                 <Input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Enter your new password"
-                  pr="4.5rem"
+                  className={passwordError ? 'border-red-500 pr-10' : 'pr-10'}
                 />
                 <Button
-                  h="1.75rem"
-                  size="sm"
-                  position="absolute"
-                  right="8px"
-                  top="50%"
-                  transform="translateY(-50%)"
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                   onClick={toggleShowPassword}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-              </Box>
-              {passwordError && <Field.ErrorText>{passwordError}</Field.ErrorText>}
-            </Field.Root>
+              </div>
+              {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
+            </div>
 
-            <Field.Root invalid={!!confirmPasswordError} required>
-              <Field.Label>Confirm New Password</Field.Label>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="font-medium">
+                Confirm New Password <span className="text-red-500">*</span>
+              </Label>
               <Input
+                id="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your new password"
+                className={confirmPasswordError ? 'border-red-500' : ''}
               />
-              {confirmPasswordError && <Field.ErrorText>{confirmPasswordError}</Field.ErrorText>}
-            </Field.Root>
+              {confirmPasswordError && (
+                <p className="text-sm text-red-500">{confirmPasswordError}</p>
+              )}
+            </div>
 
-            <Button
-              colorScheme="blue"
-              width="full"
-              mt={4}
-              type="submit"
-              loading={isLoading}
-              loadingText="Resetting Password"
-            >
-              Reset Password
+            <Button className="w-full mt-4" type="submit" disabled={isLoading}>
+              {isLoading ? 'Resetting Password...' : 'Reset Password'}
             </Button>
           </>
         )}
-      </VStack>
-    </Box>
+      </form>
+    </div>
   );
 }
