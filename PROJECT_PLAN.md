@@ -63,7 +63,8 @@ The application aims to:
 ### Frontend
 
 - **React.js** - Core UI framework
-- **Chakra UI** - Component library for responsive design
+- **Tailwind CSS** - Styling
+- **Shadcn UI** - Component library
 - **React Router** - Navigation management
 - **React Query** - Data fetching and state management
 - **Recharts** - Data visualization
@@ -86,58 +87,36 @@ The application aims to:
 
 ```text
 family-allowance-tracker/
-├── public/
-│   ├── favicon.ico
-│   ├── index.html
-│   └── manifest.json
-├── src/
-│   ├── components/
-│   │   ├── auth/
-│   │   │   ├── LoginForm.jsx
-│   │   │   ├── PrivateRoute.jsx
-│   │   │   └── AuthProvider.jsx
-│   │   ├── layout/
-│   │   │   ├── Header.jsx
-│   │   │   ├── Sidebar.jsx
-│   │   │   └── Layout.jsx
-│   │   ├── scoring/
-│   │   │   ├── DailyScoreCard.jsx
-│   │   │   ├── ScoreCalendar.jsx
-│   │   │   └── VacationDaySelector.jsx
-│   │   ├── dashboard/
-│   │   │   ├── ParentDashboard.jsx
-│   │   │   ├── ChildDashboard.jsx
-│   │   │   └── ScoreChart.jsx
-│   │   └── summary/
-│   │       ├── MonthlySummary.jsx
-│   │       └── AllowanceCalculator.jsx
-│   ├── context/
-│   │   ├── AuthContext.jsx
-│   │   └── FamilyContext.jsx
-│   ├── hooks/
-│   │   ├── useScores.js
-│   │   ├── useFamily.js
-│   │   └── useBudgetCycle.js
-│   ├── lib/
-│   │   ├── supabase.js
-│   │   ├── dateUtils.js
-│   │   └── scoreUtils.js
-│   ├── pages/
-│   │   ├── Login.jsx
-│   │   ├── ParentHome.jsx
-│   │   ├── ChildHome.jsx
-│   │   ├── Settings.jsx
-│   │   └── Reports.jsx
-│   ├── App.jsx
-│   ├── index.jsx
-│   └── theme.js
-├── .github/
-│   └── workflows/
-│       └── deploy.yml
-├── package.json
 ├── README.md
-└── supabase/
-    └── schema.sql
+├── eslint.config.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   ├── contexts/
+│   ├── hooks/
+│   ├── lib/
+│   ├── test/
+│   ├── App.css
+│   ├── App.test.tsx
+│   ├── App.tsx
+│   ├── index.css
+│   ├── main.tsx
+│   └── vite-env.d.ts
+├── supabase
+│   ├── initial_schema.sql
+│   ├── config.toml
+│   └── migrations/
+├── tailwind.config.js
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── vite.config.ts
+└── vitest.config.ts
 ```
 
 ## Implementation Steps
