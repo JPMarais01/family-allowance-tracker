@@ -30,6 +30,11 @@ export function ProtectedRoute({
 
   // If role check is required
   if (requiredRole) {
+    // If familyMember is null, redirect to unauthorized
+    if (!familyMember) {
+      return <Navigate to="/unauthorized" replace />;
+    }
+
     // For multiple allowed roles
     if (Array.isArray(requiredRole)) {
       if (!familyMember.role || !requiredRole.includes(familyMember.role)) {

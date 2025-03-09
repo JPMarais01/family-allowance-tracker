@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Session, User } from '@supabase/supabase-js';
-import { createContext, ReactNode, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '../hooks/use-toast';
 import { supabase } from '../lib/supabase';
+import { FamilyMember } from '../lib/types';
 
 // Define types for our context
 export type AuthContextType = {
   session: Session | null;
   user: User | null;
-  familyMember: any | null; // Will be typed properly once we define the FamilyMember type
+  familyMember: FamilyMember | null;
   loading: boolean;
   signIn: (
     email: string,
@@ -41,25 +42,101 @@ export { AuthContext };
 export function AuthProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [familyMember, setFamilyMember] = useState<any | null>(null);
+  const [familyMember, setFamilyMember] = useState<FamilyMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginAttempts, setLoginAttempts] = useState<
     Record<string, { count: number; lastAttempt: number }>
   >({});
+
+  // Use a ref to track previous session state
+  const prevSessionRef = useRef<string | null>(null);
+
+  // Fetch family member data
+  const fetchFamilyMember = useCallback(
+    async (userId: string): Promise<void> => {
+      // Skip if no userId provided
+      if (!userId) {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('family_members')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+
+        if (error) {
+          // Check if it's a "not found" error - this is normal for new users
+          if (error.code === 'PGRST116') {
+            setFamilyMember(null);
+            return;
+          }
+
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch family member data',
+            variant: 'destructive',
+          });
+          // Make sure to set familyMember to null on error
+          setFamilyMember(null);
+          return;
+        }
+
+        // Only update state if the data has actually changed
+        if (!data) {
+          setFamilyMember(null);
+        } else if (!familyMember || familyMember.id !== data.id) {
+          setFamilyMember(data);
+        }
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while fetching family member data',
+          variant: 'destructive',
+        });
+        // Make sure to set familyMember to null on error
+        setFamilyMember(null);
+      }
+    },
+    [familyMember]
+  );
+
   useEffect(() => {
     // Get the current session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      const sessionString = JSON.stringify(session);
+
+      // Only update state if it has changed
+      if (sessionString !== prevSessionRef.current) {
+        prevSessionRef.current = sessionString;
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+
       setLoading(false);
+
+      // If we have a user, fetch their role and family member data
+      if (session?.user) {
+        fetchFamilyMember(session.user.id);
+      } else {
+        setFamilyMember(null);
+      }
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      const sessionString = JSON.stringify(session);
+
+      // Only update state if it has changed
+      if (sessionString !== prevSessionRef.current) {
+        prevSessionRef.current = sessionString;
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+
       setLoading(false);
 
       // If we have a user, fetch their role and family member data
@@ -73,37 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  // Fetch family member data
-  async function fetchFamilyMember(userId: string): Promise<void> {
-    try {
-      const { data, error } = await supabase
-        .from('family_members')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching family member:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch family member data',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setFamilyMember(data || null);
-    } catch (error) {
-      console.error('Error in fetchFamilyMember:', error);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred while fetching family member data',
-        variant: 'destructive',
-      });
-    }
-  }
+  }, [fetchFamilyMember]);
 
   // Sign in with email and password
   const signIn = async (
