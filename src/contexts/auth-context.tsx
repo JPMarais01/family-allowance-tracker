@@ -3,12 +3,13 @@ import { Session, User } from '@supabase/supabase-js';
 import { createContext, ReactNode, useEffect, useState } from 'react';
 import { toast } from '../hooks/use-toast';
 import { supabase } from '../lib/supabase';
+import { FamilyMember } from '../lib/types';
 
 // Define types for our context
 export type AuthContextType = {
   session: Session | null;
   user: User | null;
-  familyMember: any | null; // Will be typed properly once we define the FamilyMember type
+  familyMember: FamilyMember | null;
   loading: boolean;
   signIn: (
     email: string,
@@ -41,7 +42,7 @@ export { AuthContext };
 export function AuthProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [familyMember, setFamilyMember] = useState<any | null>(null);
+  const [familyMember, setFamilyMember] = useState<FamilyMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginAttempts, setLoginAttempts] = useState<
     Record<string, { count: number; lastAttempt: number }>

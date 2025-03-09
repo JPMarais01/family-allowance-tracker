@@ -171,7 +171,7 @@ family-allowance-tracker/
    - React to Supabase auth changes to keep user sessions updated.
    - Restrict pages based on user roles (parent/child).
 
-2. **Create Family Management**
+2. **Create Family Management** - COMPLETE
 
    - Provide a way to create a new family (owner and basic details).
    - Add or invite children to the family with assigned roles.
@@ -184,7 +184,7 @@ family-allowance-tracker/
    - Invalidate and refetch relevant data upon score changes (using React Query).
 
 4. **Build Calendar Interface**
-   - Display a full monthly or weekly calendar view for each child’s scores.
+   - Display a full monthly or weekly calendar view for each child's scores.
    - Offer a click or tap-based UI to open a daily score input form.
    - Visually highlight vacation days and differentiate them from normal days.
 
