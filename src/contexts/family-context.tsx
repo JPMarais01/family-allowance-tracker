@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { useFamilyData } from '../hooks/use-family-data';
 import {
@@ -8,73 +8,66 @@ import {
   FamilySettings,
   UpdateFamilyMemberInput,
 } from '../lib/types';
-
-// Define types for our context
-export type FamilyContextType = {
-  family: Family | null;
-  familyMembers: FamilyMember[];
-  familySettings: FamilySettings | null;
-  loading: boolean;
-  createFamily: (name: string) => Promise<Family | null>;
-  addFamilyMember: (input: AddFamilyMemberInput) => Promise<FamilyMember | null>;
-  updateFamilyMember: (input: UpdateFamilyMemberInput) => Promise<FamilyMember | null>;
-  deleteFamilyMember: (memberId: string) => Promise<boolean>;
-  refreshFamilyData: () => Promise<void>;
-};
-
-// Create the context with a default value
-const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
-
-// Export the context for use in the hook file
-export { FamilyContext };
+import { FamilyContext } from './family-context-types';
 
 // Provider component
 export function FamilyProvider({ children }: { children: ReactNode }): React.ReactElement {
   const { user, familyMember } = useAuth();
-  const familyData = useFamilyData();
+  // Call the hook directly
+  const familyData = useFamilyData(user);
 
   const [family, setFamily] = useState<Family | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [familySettings, setFamilySettings] = useState<FamilySettings | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch all family data
+  const fetchFamilyData = useCallback(
+    async (familyId: string) => {
+      // Skip if we're already loading or if we already have this family's data
+      if (loading || (family && family.id === familyId)) {
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Fetch family details
+        const familyDetails = await familyData.getFamilyById(familyId);
+        setFamily(familyDetails);
+
+        // Fetch family members
+        const members = await familyData.getFamilyMembers(familyId);
+        setFamilyMembers(members);
+
+        // Fetch family settings
+        const settings = await familyData.getFamilySettings(familyId);
+        setFamilySettings(settings);
+      } catch (error) {
+        console.error('Error fetching family data:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [familyData, loading, family]
+  );
+
   // Fetch family data on mount or when user/familyMember changes
   useEffect(() => {
-    if (user && familyMember) {
+    // Only fetch if we have user and familyMember AND we don't already have family data
+    // or if the family ID has changed
+    if (user && familyMember && (!family || family.id !== familyMember.family_id)) {
       fetchFamilyData(familyMember.family_id);
-    } else {
+    } else if (!user || !familyMember) {
       setLoading(false);
     }
-  }, [user, familyMember]);
-
-  // Fetch all family data
-  const fetchFamilyData = async (familyId: string) => {
-    setLoading(true);
-    try {
-      // Fetch family details
-      const familyDetails = await familyData.getFamilyById(familyId);
-      setFamily(familyDetails);
-
-      // Fetch family members
-      const members = await familyData.getFamilyMembers(familyId);
-      setFamilyMembers(members);
-
-      // Fetch family settings
-      const settings = await familyData.getFamilySettings(familyId);
-      setFamilySettings(settings);
-    } catch (error) {
-      console.error('Error fetching family data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user, familyMember, fetchFamilyData, family]);
 
   // Refresh family data
   const refreshFamilyData = useCallback(async () => {
     if (family) {
       await fetchFamilyData(family.id);
     }
-  }, [family]);
+  }, [family, fetchFamilyData]);
 
   // Create a new family
   const createFamily = useCallback(
@@ -93,13 +86,15 @@ export function FamilyProvider({ children }: { children: ReactNode }): React.Rea
         setLoading(false);
       }
     },
-    [familyData]
+    [familyData, fetchFamilyData]
   );
 
   // Add a family member
   const addFamilyMember = useCallback(
     async (input: AddFamilyMemberInput): Promise<FamilyMember | null> => {
-      if (!family) return null;
+      if (!family) {
+        return null;
+      }
 
       setLoading(true);
       try {

@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { FamilyContext, FamilyContextType } from '../contexts/family-context';
+import { FamilyContext, FamilyContextType } from '../contexts/family-context-types';
 
 // Custom hook to use the family context
 export function useFamily(): FamilyContextType {

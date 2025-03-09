@@ -15,7 +15,7 @@ export function AddFamilyMemberForm(): React.ReactElement {
   });
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value, type } = e.target as HTMLInputElement;
 
     setFormData(prev => ({
@@ -24,7 +24,7 @@ export function AddFamilyMemberForm(): React.ReactElement {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError('');
 

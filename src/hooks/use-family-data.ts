@@ -1,3 +1,4 @@
+import { User } from '@supabase/supabase-js';
 import { useCallback, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
@@ -8,16 +9,30 @@ import {
   FamilySettings,
   UpdateFamilyMemberInput,
 } from '../lib/types';
-import { useAuth } from './use-auth';
 import { toast } from './use-toast';
 
-export function useFamilyData() {
-  const { user } = useAuth();
+// Define the return type for the hook
+type UseFamilyDataReturn = {
+  loading: boolean;
+  getFamilyByOwnerId: () => Promise<Family | null>;
+  getFamilyById: (familyId: string) => Promise<Family | null>;
+  createFamily: (input: CreateFamilyInput) => Promise<Family | null>;
+  getFamilyMembers: (familyId: string) => Promise<FamilyMember[]>;
+  addFamilyMember: (familyId: string, input: AddFamilyMemberInput) => Promise<FamilyMember | null>;
+  updateFamilyMember: (input: UpdateFamilyMemberInput) => Promise<FamilyMember | null>;
+  deleteFamilyMember: (memberId: string) => Promise<boolean>;
+  getFamilySettings: (familyId: string) => Promise<FamilySettings | null>;
+};
+
+// Accept user as a parameter instead of using useAuth
+export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
   const [loading, setLoading] = useState(false);
 
   // Get family by owner ID
   const getFamilyByOwnerId = useCallback(async (): Promise<Family | null> => {
-    if (!user) return null;
+    if (!user) {
+      return null;
+    }
 
     try {
       setLoading(true);
@@ -54,7 +69,9 @@ export function useFamilyData() {
   // Get family by ID
   const getFamilyById = useCallback(
     async (familyId: string): Promise<Family | null> => {
-      if (!user) return null;
+      if (!user) {
+        return null;
+      }
 
       try {
         setLoading(true);
@@ -93,7 +110,9 @@ export function useFamilyData() {
   // Create a new family
   const createFamily = useCallback(
     async (input: CreateFamilyInput): Promise<Family | null> => {
-      if (!user) return null;
+      if (!user) {
+        return null;
+      }
 
       try {
         setLoading(true);
@@ -176,7 +195,9 @@ export function useFamilyData() {
   // Get family members
   const getFamilyMembers = useCallback(
     async (familyId: string): Promise<FamilyMember[]> => {
-      if (!user) return [];
+      if (!user) {
+        return [];
+      }
 
       try {
         setLoading(true);
@@ -214,7 +235,9 @@ export function useFamilyData() {
   // Add a family member
   const addFamilyMember = useCallback(
     async (familyId: string, input: AddFamilyMemberInput): Promise<FamilyMember | null> => {
-      if (!user) return null;
+      if (!user) {
+        return null;
+      }
 
       try {
         setLoading(true);
@@ -266,15 +289,23 @@ export function useFamilyData() {
   // Update a family member
   const updateFamilyMember = useCallback(
     async (input: UpdateFamilyMemberInput): Promise<FamilyMember | null> => {
-      if (!user) return null;
+      if (!user) {
+        return null;
+      }
 
       try {
         setLoading(true);
 
         const updates: Partial<FamilyMember> = {};
-        if (input.name) updates.name = input.name;
-        if (input.role) updates.role = input.role;
-        if (input.base_allowance !== undefined) updates.base_allowance = input.base_allowance;
+        if (input.name) {
+          updates.name = input.name;
+        }
+        if (input.role) {
+          updates.role = input.role;
+        }
+        if (input.base_allowance !== undefined) {
+          updates.base_allowance = input.base_allowance;
+        }
 
         const { data, error } = await supabase
           .from('family_members')
@@ -317,7 +348,9 @@ export function useFamilyData() {
   // Delete a family member
   const deleteFamilyMember = useCallback(
     async (memberId: string): Promise<boolean> => {
-      if (!user) return false;
+      if (!user) {
+        return false;
+      }
 
       try {
         setLoading(true);
@@ -358,7 +391,9 @@ export function useFamilyData() {
   // Get family settings
   const getFamilySettings = useCallback(
     async (familyId: string): Promise<FamilySettings | null> => {
-      if (!user) return null;
+      if (!user) {
+        return null;
+      }
 
       try {
         setLoading(true);

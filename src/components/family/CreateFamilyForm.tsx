@@ -10,7 +10,7 @@ export function CreateFamilyForm(): React.ReactElement {
   const [familyName, setFamilyName] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError('');
 
