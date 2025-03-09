@@ -302,8 +302,11 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         }
         if (input.role) {
           updates.role = input.role;
+          if (input.role === 'parent') {
+            updates.base_allowance = null;
+          }
         }
-        if (input.base_allowance !== undefined) {
+        if (input.base_allowance !== undefined && (!input.role || input.role === 'child')) {
           updates.base_allowance = input.base_allowance;
         }
 

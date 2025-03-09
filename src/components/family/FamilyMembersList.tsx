@@ -22,7 +22,7 @@ export function FamilyMembersList(): React.ReactElement {
       id: member.id,
       name: member.name,
       role: member.role,
-      base_allowance: member.base_allowance || 0,
+      base_allowance: member.role === 'child' ? member.base_allowance || 0 : undefined,
     });
   };
 
