@@ -3,7 +3,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { toast } from '../../hooks/use-toast';
-import { checkInvitationForMember, createInvitation } from '../../services/InvitationService';
+import { 
+  checkInvitationForMember, 
+  createInvitation, 
+  getExpiredInvitationsForMember, 
+  regenerateExpiredToken,
+  Invitation
+} from '../../services/InvitationService';
 import { Button } from '../ui/button';
 
 interface InviteMemberProps {
@@ -17,6 +23,7 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
   const [invitationLink, setInvitationLink] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [existingInvitation, setExistingInvitation] = useState<string | null>(null);
+  const [expiredInvitation, setExpiredInvitation] = useState<Invitation | null>(null);
   const [checkingInvitation, setCheckingInvitation] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -54,21 +61,27 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
 
   // Check for existing invitation when modal opens
   useEffect(() => {
-    const checkExistingInvitation = async (): Promise<void> => {
+    const checkInvitations = async (): Promise<void> => {
       if (isOpen) {
         setCheckingInvitation(true);
         try {
-          // We'll need to implement this function in InvitationService
+          // Check for active invitations
           const existingLink = await checkInvitationForMember(memberId);
           if (existingLink) {
             setExistingInvitation(existingLink);
             setInvitationLink(existingLink);
+          } else {
+            // Check for expired invitations
+            const expiredInvitations = await getExpiredInvitationsForMember(memberId);
+            if (expiredInvitations.length > 0) {
+              setExpiredInvitation(expiredInvitations[0]);
+            }
           }
         } catch (error) {
-          console.error('Error checking existing invitation:', error);
+          console.error('Error checking invitations:', error);
           toast({
             title: 'Error',
-            description: 'Failed to check for existing invitations.',
+            description: 'Failed to check for invitations.',
             variant: 'destructive',
           });
         } finally {
@@ -77,7 +90,7 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
       }
     };
 
-    checkExistingInvitation();
+    checkInvitations();
   }, [isOpen, memberId]);
 
   const handleInvite = async (): Promise<void> => {
@@ -110,6 +123,39 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
       }
     } catch (error) {
       console.error('Error creating invitation:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerateToken = async (): Promise<void> => {
+    if (!expiredInvitation) return;
+    
+    setIsLoading(true);
+    try {
+      const newLink = await regenerateExpiredToken(expiredInvitation.id);
+      if (newLink) {
+        setInvitationLink(newLink);
+        setExpiredInvitation(null);
+        toast({
+          title: 'Invitation Renewed',
+          description: 'The invitation link has been regenerated successfully.',
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to regenerate invitation link.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error regenerating invitation:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred.',
@@ -161,7 +207,9 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
                   ? 'Share this invitation link with your family member.'
                   : existingInvitation
                     ? 'This member already has an active invitation.'
-                    : 'Create an invitation link for this family member to join.'}
+                    : expiredInvitation
+                      ? 'This member has an expired invitation.'
+                      : 'Create an invitation link for this family member to join.'}
               </p>
             </div>
 
@@ -204,6 +252,19 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
                     View Existing Invitation
                   </Button>
                 </div>
+              ) : expiredInvitation ? (
+                <div className="space-y-4">
+                  <p className="text-amber-600 dark:text-amber-400">
+                    This family member has an expired invitation from {new Date(expiredInvitation.expires_at).toLocaleDateString()}.
+                  </p>
+                  <Button 
+                    onClick={handleRegenerateToken} 
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Regenerating...' : 'Regenerate Invitation Link'}
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -234,16 +295,18 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
                   <Button variant="outline" onClick={() => setIsOpen(false)}>
                     Cancel
                   </Button>
-                  <Button
-                    onClick={handleInvite}
-                    disabled={isLoading || checkingInvitation || !!existingInvitation}
-                  >
-                    {isLoading
-                      ? 'Creating...'
-                      : existingInvitation
-                        ? 'View Invitation'
-                        : 'Create Invitation'}
-                  </Button>
+                  {!expiredInvitation && (
+                    <Button
+                      onClick={handleInvite}
+                      disabled={isLoading || checkingInvitation || !!existingInvitation}
+                    >
+                      {isLoading
+                        ? 'Creating...'
+                        : existingInvitation
+                          ? 'View Invitation'
+                          : 'Create Invitation'}
+                    </Button>
+                  )}
                 </>
               )}
             </div>

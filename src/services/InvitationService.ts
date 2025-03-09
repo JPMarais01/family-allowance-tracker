@@ -157,3 +157,59 @@ export async function checkInvitationForMember(memberId: string): Promise<string
     return null;
   }
 }
+
+export async function getExpiredInvitationsForMember(
+  memberId: string
+): Promise<Invitation[]> {
+  try {
+    const { data, error } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('family_member_id', memberId)
+      .is('used_at', null) // Only get unused invitations
+      .lt('expires_at', new Date().toISOString()) // Only get expired invitations
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching expired invitations:', error);
+    return [];
+  }
+}
+
+export async function regenerateExpiredToken(
+  invitationId: string
+): Promise<string | null> {
+  try {
+    // Generate a new secure random token
+    const token = crypto.randomUUID();
+    
+    // Set new expiration (7 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    // Update the invitation with the new token and expiration
+    const { error } = await supabase
+      .from('invitations')
+      .update({ 
+        token,
+        expires_at: expiresAt.toISOString() 
+      })
+      .eq('id', invitationId)
+      .is('used_at', null); // Only update if not used
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Return the new invitation link
+    return `${window.location.origin}/join?token=${token}`;
+  } catch (error) {
+    console.error('Error regenerating invitation token:', error);
+    return null;
+  }
+}
