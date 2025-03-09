@@ -22,11 +22,11 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
 
   // Close modal when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent): void => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
-    }
+    };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -38,11 +38,11 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
 
   // Close on escape key
   useEffect(() => {
-    function handleEscapeKey(event: KeyboardEvent) {
+    const handleEscapeKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         setIsOpen(false);
       }
-    }
+    };
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscapeKey);
@@ -54,7 +54,7 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
 
   // Check for existing invitation when modal opens
   useEffect(() => {
-    async function checkExistingInvitation() {
+    const checkExistingInvitation = async (): Promise<void> => {
       if (isOpen) {
         setCheckingInvitation(true);
         try {
@@ -75,7 +75,7 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
           setCheckingInvitation(false);
         }
       }
-    }
+    };
 
     checkExistingInvitation();
   }, [isOpen, memberId]);

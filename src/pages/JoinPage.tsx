@@ -28,7 +28,7 @@ export function JoinPage(): React.ReactElement {
   }>({});
 
   useEffect(() => {
-    async function validateToken() {
+    const validateToken = async (): Promise<void> => {
       if (!token) {
         setError('No invitation token provided');
         setLoading(false);
@@ -53,7 +53,7 @@ export function JoinPage(): React.ReactElement {
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     validateToken();
   }, [token]);
