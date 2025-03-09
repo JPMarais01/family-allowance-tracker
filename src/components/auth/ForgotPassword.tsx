@@ -65,54 +65,59 @@ export function ForgotPassword(): React.ReactElement {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto mt-8 p-6 border rounded-lg shadow-lg">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
-        <h1 className="text-2xl font-bold">Reset Password</h1>
+    <div className="w-full max-w-lg mx-auto mt-8 p-6 border rounded-lg shadow-lg">
+      {!isSubmitted ? (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full">
+          <h1 className="text-2xl font-bold">Reset Password</h1>
 
-        {isSubmitted ? (
-          <>
-            <p className="text-center py-4">
-              We've sent a password reset link to your email. Please check your inbox.
-            </p>
-            <Button className="w-full" onClick={() => navigate('/login')}>
+          <p className="text-gray-500">
+            Enter your email address and we'll send you a link to reset your password.
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="font-medium">
+              Email <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your.email@example.com"
+              className={emailError ? 'border-red-500' : ''}
+            />
+            {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+          </div>
+
+          <Button className="w-full mt-4" type="submit" disabled={isLoading}>
+            {isLoading ? 'Sending...' : 'Send Reset Link'}
+          </Button>
+
+          <p className="mt-2 text-sm">
+            Remember your password?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="text-blue-500 hover:underline"
+            >
               Back to Login
-            </Button>
-          </>
-        ) : (
-          <>
-            <p>Enter your email address and we'll send you a link to reset your password.</p>
+            </button>
+          </p>
+        </form>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <h1 className="text-2xl font-bold">Check Your Email</h1>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="font-medium">
-                Email <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                className={emailError ? 'border-red-500' : ''}
-              />
-              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
-            </div>
+          <p className="text-gray-500">
+            If an account exists for {email}, we've sent a password reset link to this email
+            address.
+          </p>
 
-            <Button className="w-full mt-4" type="submit" disabled={isLoading}>
-              {isLoading ? 'Sending...' : 'Send Reset Link'}
-            </Button>
-
-            <p className="mt-2 text-sm">
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="text-blue-500 hover:underline"
-              >
-                Back to Login
-              </button>
-            </p>
-          </>
-        )}
-      </form>
+          <Button className="w-full mt-4" onClick={() => navigate('/login')}>
+            Back to Login
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

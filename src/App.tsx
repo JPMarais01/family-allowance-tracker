@@ -16,6 +16,7 @@ import { Unauthorized } from './components/auth/Unauthorized';
 
 // Dashboard Component
 import { Dashboard } from './components/Dashboard';
+import { JoinPage } from './pages/JoinPage';
 
 function App(): React.ReactElement {
   return (
@@ -48,6 +49,8 @@ function App(): React.ReactElement {
 
                 {/* Catch All - Redirect to Login */}
                 <Route path="*" element={<Navigate to="/login" replace />} />
+
+                <Route path="/join" element={<JoinPage />} />
               </Routes>
             </div>
           </Router>

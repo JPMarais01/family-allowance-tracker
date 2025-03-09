@@ -4,6 +4,7 @@ import { FamilyMember, UpdateFamilyMemberInput } from '../../lib/types';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Spinner } from '../ui/spinner';
+import { InviteMember } from './InviteMember';
 
 export function FamilyMembersList(): React.ReactElement {
   const { familyMembers, deleteFamilyMember, updateFamilyMember, loading } = useFamily();
@@ -154,6 +155,9 @@ export function FamilyMembersList(): React.ReactElement {
                   <Button onClick={() => handleEdit(member)} variant="outline" size="sm">
                     Edit
                   </Button>
+                  {!member.user_id && (
+                    <InviteMember memberId={member.id} memberName={member.name} />
+                  )}
                   <Button onClick={() => handleDelete(member.id)} variant="destructive" size="sm">
                     Remove
                   </Button>
