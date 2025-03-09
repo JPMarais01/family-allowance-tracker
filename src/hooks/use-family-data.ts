@@ -73,8 +73,26 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         return null;
       }
 
+      if (!familyId) {
+        return null;
+      }
+
       try {
         setLoading(true);
+
+        // First check if the user is a member of this family
+        const { error: memberError } = await supabase
+          .from('family_members')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('family_id', familyId)
+          .single();
+
+        if (memberError && memberError.code === 'PGRST116') {
+          return null;
+        }
+
+        // Now fetch the family data
         const { data, error } = await supabase
           .from('families')
           .select('*')
@@ -82,7 +100,11 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
           .single();
 
         if (error) {
-          console.error('Error fetching family:', error);
+          // Check if it's a "not found" error
+          if (error.code === 'PGRST116') {
+            return null;
+          }
+
           toast({
             title: 'Error',
             description: 'Failed to fetch family data',
@@ -92,8 +114,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         }
 
         return data;
-      } catch (error) {
-        console.error('Error in getFamilyById:', error);
+      } catch {
         toast({
           title: 'Error',
           description: 'An unexpected error occurred',
@@ -199,15 +220,32 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         return [];
       }
 
+      if (!familyId) {
+        return [];
+      }
+
       try {
         setLoading(true);
+
+        // First check if the user is a member of this family and get their role
+        const { error: memberError } = await supabase
+          .from('family_members')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('family_id', familyId)
+          .single();
+
+        if (memberError && memberError.code === 'PGRST116') {
+          return [];
+        }
+
+        // Now fetch all family members
         const { data, error } = await supabase
           .from('family_members')
           .select('*')
           .eq('family_id', familyId);
 
         if (error) {
-          console.error('Error fetching family members:', error);
           toast({
             title: 'Error',
             description: 'Failed to fetch family members',
@@ -217,8 +255,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         }
 
         return data || [];
-      } catch (error) {
-        console.error('Error in getFamilyMembers:', error);
+      } catch {
         toast({
           title: 'Error',
           description: 'An unexpected error occurred',
@@ -398,8 +435,13 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         return null;
       }
 
+      if (!familyId) {
+        return null;
+      }
+
       try {
         setLoading(true);
+
         const { data, error } = await supabase
           .from('family_settings')
           .select('*')
@@ -407,7 +449,11 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
           .single();
 
         if (error) {
-          console.error('Error fetching family settings:', error);
+          // Check if it's a "not found" error
+          if (error.code === 'PGRST116') {
+            return null;
+          }
+
           toast({
             title: 'Error',
             description: 'Failed to fetch family settings',
@@ -417,8 +463,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         }
 
         return data;
-      } catch (error) {
-        console.error('Error in getFamilySettings:', error);
+      } catch {
         toast({
           title: 'Error',
           description: 'An unexpected error occurred',
