@@ -15,7 +15,7 @@ export function FamilyMembersList(): React.ReactElement {
     base_allowance: 0,
   });
 
-  const handleEdit = (member: FamilyMember) => {
+  const handleEdit = (member: FamilyMember): void => {
     setEditingMember(member.id);
     setEditFormData({
       id: member.id,
@@ -25,11 +25,11 @@ export function FamilyMembersList(): React.ReactElement {
     });
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (): void => {
     setEditingMember(null);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value, type } = e.target as HTMLInputElement;
 
     setEditFormData(prev => ({
@@ -38,7 +38,7 @@ export function FamilyMembersList(): React.ReactElement {
     }));
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
     try {
@@ -51,7 +51,7 @@ export function FamilyMembersList(): React.ReactElement {
     }
   };
 
-  const handleDelete = async (memberId: string) => {
+  const handleDelete = async (memberId: string): Promise<void> => {
     if (window.confirm('Are you sure you want to remove this family member?')) {
       try {
         await deleteFamilyMember(memberId);
@@ -138,14 +138,14 @@ export function FamilyMembersList(): React.ReactElement {
                 </div>
               </form>
             ) : (
-              <div className="flex justify-between items-center">
-                <div>
+              <div className="flex justify-between">
+                <div className="flex flex-col items-start">
                   <h5 className="font-medium">{member.name}</h5>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                     {member.role === 'child' && member.base_allowance !== null && (
                       <span className="ml-2">
-                        (Base Allowance: ${member.base_allowance.toFixed(2)})
+                        (Base Allowance: R{member.base_allowance.toFixed(2)})
                       </span>
                     )}
                   </p>
