@@ -40,10 +40,10 @@ describe('InviteMember Component', () => {
 
   it('opens modal when invite button is clicked', async () => {
     render(<InviteMember memberId="123" memberName="Test Member" />);
-    
+
     // Click invite button
     fireEvent.click(screen.getByText('Invite'));
-    
+
     // Modal should be open with the member name
     await waitFor(() => {
       expect(screen.getByText('Invite Test Member')).toBeInTheDocument();
@@ -55,18 +55,18 @@ describe('InviteMember Component', () => {
     (createInvitation as jest.Mock).mockResolvedValue('http://example.com/join?token=123');
 
     render(<InviteMember memberId="123" memberName="Test Member" />);
-    
+
     // Open modal
     fireEvent.click(screen.getByText('Invite'));
-    
+
     // Wait for invitation check to complete
     await waitFor(() => {
       expect(screen.getByText('Create Invitation')).toBeInTheDocument();
     });
-    
+
     // Create invitation
     fireEvent.click(screen.getByText('Create Invitation'));
-    
+
     // Wait for invitation to be created
     await waitFor(() => {
       expect(createInvitation).toHaveBeenCalledWith('123', '');
@@ -84,10 +84,10 @@ describe('InviteMember Component', () => {
     (checkInvitationForMember as jest.Mock).mockResolvedValue('http://example.com/join?token=abc');
 
     render(<InviteMember memberId="123" memberName="Test Member" />);
-    
+
     // Open modal
     fireEvent.click(screen.getByText('Invite'));
-    
+
     // The component automatically shows the link when an existing one is found
     // Just verify the link is shown
     await waitFor(() => {
@@ -99,26 +99,30 @@ describe('InviteMember Component', () => {
     // Mock an expired invitation
     const expiredDate = new Date();
     expiredDate.setDate(expiredDate.getDate() - 2); // 2 days ago
-    
-    (getExpiredInvitationsForMember as jest.Mock).mockResolvedValue([{
-      id: '456',
-      family_member_id: '123',
-      token: 'expired-token',
-      expires_at: expiredDate.toISOString(),
-      created_at: new Date().toISOString(),
-      family_id: 'fam123',
-      role: 'child',
-      created_by: 'user123'
-    }]);
+
+    (getExpiredInvitationsForMember as jest.Mock).mockResolvedValue([
+      {
+        id: '456',
+        family_member_id: '123',
+        token: 'expired-token',
+        expires_at: expiredDate.toISOString(),
+        created_at: new Date().toISOString(),
+        family_id: 'fam123',
+        role: 'child',
+        created_by: 'user123',
+      },
+    ]);
 
     render(<InviteMember memberId="123" memberName="Test Member" />);
-    
+
     // Open modal
     fireEvent.click(screen.getByText('Invite'));
-    
+
     // Wait for invitation checks to complete
     await waitFor(() => {
-      expect(screen.getByText(/This family member has an expired invitation from/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/This family member has an expired invitation from/)
+      ).toBeInTheDocument();
       expect(screen.getByText('Regenerate Invitation Link')).toBeInTheDocument();
     });
   });
@@ -127,38 +131,46 @@ describe('InviteMember Component', () => {
     // Mock an expired invitation
     const expiredDate = new Date();
     expiredDate.setDate(expiredDate.getDate() - 2); // 2 days ago
-    
-    (getExpiredInvitationsForMember as jest.Mock).mockResolvedValue([{
-      id: '456',
-      family_member_id: '123',
-      token: 'expired-token',
-      expires_at: expiredDate.toISOString(),
-      created_at: new Date().toISOString(),
-      family_id: 'fam123',
-      role: 'child',
-      created_by: 'user123'
-    }]);
-    
+
+    (getExpiredInvitationsForMember as jest.Mock).mockResolvedValue([
+      {
+        id: '456',
+        family_member_id: '123',
+        token: 'expired-token',
+        expires_at: expiredDate.toISOString(),
+        created_at: new Date().toISOString(),
+        family_id: 'fam123',
+        role: 'child',
+        created_by: 'user123',
+      },
+    ]);
+
     // Mock successful token regeneration
-    (regenerateExpiredToken as jest.Mock).mockResolvedValue('http://example.com/join?token=new-token');
+    (regenerateExpiredToken as jest.Mock).mockResolvedValue(
+      'http://example.com/join?token=new-token'
+    );
 
     render(<InviteMember memberId="123" memberName="Test Member" />);
-    
+
     // Open modal
     fireEvent.click(screen.getByText('Invite'));
-    
+
     // Wait for invitation checks to complete
     await waitFor(() => {
-      expect(screen.getByText(/This family member has an expired invitation from/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/This family member has an expired invitation from/)
+      ).toBeInTheDocument();
     });
-    
+
     // Regenerate the token
     fireEvent.click(screen.getByText('Regenerate Invitation Link'));
-    
+
     // Wait for regeneration to complete
     await waitFor(() => {
       expect(regenerateExpiredToken).toHaveBeenCalledWith('456');
-      expect(screen.getByDisplayValue('http://example.com/join?token=new-token')).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue('http://example.com/join?token=new-token')
+      ).toBeInTheDocument();
       expect(toast).toHaveBeenCalledWith({
         title: 'Invitation Renewed',
         description: 'The invitation link has been regenerated successfully.',
@@ -171,34 +183,38 @@ describe('InviteMember Component', () => {
     // Mock an expired invitation
     const expiredDate = new Date();
     expiredDate.setDate(expiredDate.getDate() - 2); // 2 days ago
-    
-    (getExpiredInvitationsForMember as jest.Mock).mockResolvedValue([{
-      id: '456',
-      family_member_id: '123',
-      token: 'expired-token',
-      expires_at: expiredDate.toISOString(),
-      created_at: new Date().toISOString(),
-      family_id: 'fam123',
-      role: 'child',
-      created_by: 'user123'
-    }]);
-    
+
+    (getExpiredInvitationsForMember as jest.Mock).mockResolvedValue([
+      {
+        id: '456',
+        family_member_id: '123',
+        token: 'expired-token',
+        expires_at: expiredDate.toISOString(),
+        created_at: new Date().toISOString(),
+        family_id: 'fam123',
+        role: 'child',
+        created_by: 'user123',
+      },
+    ]);
+
     // Mock token regeneration failure
     (regenerateExpiredToken as jest.Mock).mockResolvedValue(null);
 
     render(<InviteMember memberId="123" memberName="Test Member" />);
-    
+
     // Open modal
     fireEvent.click(screen.getByText('Invite'));
-    
+
     // Wait for invitation checks to complete
     await waitFor(() => {
-      expect(screen.getByText(/This family member has an expired invitation from/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/This family member has an expired invitation from/)
+      ).toBeInTheDocument();
     });
-    
+
     // Regenerate the token
     fireEvent.click(screen.getByText('Regenerate Invitation Link'));
-    
+
     // Wait for regeneration to complete
     await waitFor(() => {
       expect(regenerateExpiredToken).toHaveBeenCalledWith('456');

@@ -3,12 +3,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { toast } from '../../hooks/use-toast';
-import { 
-  checkInvitationForMember, 
-  createInvitation, 
-  getExpiredInvitationsForMember, 
+import {
+  checkInvitationForMember,
+  createInvitation,
+  getExpiredInvitationsForMember,
   regenerateExpiredToken,
-  Invitation
+  Invitation,
 } from '../../services/InvitationService';
 import { Button } from '../ui/button';
 
@@ -135,7 +135,7 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
 
   const handleRegenerateToken = async (): Promise<void> => {
     if (!expiredInvitation) return;
-    
+
     setIsLoading(true);
     try {
       const newLink = await regenerateExpiredToken(expiredInvitation.id);
@@ -255,13 +255,10 @@ export function InviteMember({ memberId, memberName }: InviteMemberProps): React
               ) : expiredInvitation ? (
                 <div className="space-y-4">
                   <p className="text-amber-600 dark:text-amber-400">
-                    This family member has an expired invitation from {new Date(expiredInvitation.expires_at).toLocaleDateString()}.
+                    This family member has an expired invitation from{' '}
+                    {new Date(expiredInvitation.expires_at).toLocaleDateString()}.
                   </p>
-                  <Button 
-                    onClick={handleRegenerateToken} 
-                    className="w-full"
-                    disabled={isLoading}
-                  >
+                  <Button onClick={handleRegenerateToken} className="w-full" disabled={isLoading}>
                     {isLoading ? 'Regenerating...' : 'Regenerate Invitation Link'}
                   </Button>
                 </div>
