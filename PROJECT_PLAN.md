@@ -156,6 +156,7 @@ family-allowance-tracker/
    - Implement row-level security policies to ensure appropriate data access.
 
 5. **Set Up GitHub Actions for Deployment** - COMPLETE
+
    - Configure CI/CD to run builds on every push to the main branch.
    - Automate deployment to GitHub Pages or another desired platform.
    - Confirm that environment variables are properly set for production builds.
@@ -177,13 +178,14 @@ family-allowance-tracker/
    - Add or invite children to the family with assigned roles.
    - List/manage existing family members and update their information.
 
-3. **Create Scoring System**
+3. **Create Scoring System** - COMPLETE
 
    - Store daily scores, notes, and optional vacation status for each child.
    - Support updating scores if they already exist for a particular date.
    - Invalidate and refetch relevant data upon score changes (using React Query).
 
 4. **Build Calendar Interface**
+
    - Display a full monthly or weekly calendar view for each child's scores.
    - Offer a click or tap-based UI to open a daily score input form.
    - Visually highlight vacation days and differentiate them from normal days.
@@ -205,6 +207,7 @@ family-allowance-tracker/
    - Present aggregated performance statistics (like average scores).
 
 3. **Create Vacation Day Selection**
+
    - Provide a bulk date-selection interface to mark multiple days as vacation.
    - Assign a default score for vacation days.
    - Persist these details in daily score records.
@@ -232,6 +235,7 @@ family-allowance-tracker/
    - Clearly indicate days without scores or those marked as vacation.
 
 4. **Add Allowance Calculation**
+
    - Expose utility functions that compute final allowance based on base allowance and average score performance.
    - Integrate logic into monthly/weekly summaries and dashboards.
    - Display real-time allowance progress and final calculated amounts.
@@ -257,21 +261,21 @@ family-allowance-tracker/
 
 1. **Unit Testing**
 
-- Test individual utility functions
-- Test hooks in isolation
-- Test component rendering
+   - Test individual utility functions
+   - Test hooks in isolation
+   - Test component rendering
 
 2. **Integration Testing**
 
-- Test authentication flow
-- Test data fetching and mutations
-- Test budget cycle calculations
+   - Test authentication flow
+   - Test data fetching and mutations
+   - Test budget cycle calculations
 
 3. **End-to-End Testing**
 
-- Test complete user flows
-- Test mobile and desktop responsiveness
-- Test offline functionality
+   - Test complete user flows
+   - Test mobile and desktop responsiveness
+   - Test offline functionality
 
 ---
 
@@ -279,22 +283,22 @@ family-allowance-tracker/
 
 1. **Pre-Launch**
 
-- Complete all core functionality
-- Review and fix any bugs
-- Test on mobile and desktop devices
-- Ensure proper error handling
+   - Complete all core functionality
+   - Review and fix any bugs
+   - Test on mobile and desktop devices
+   - Ensure proper error handling
 
 2. **Launch**
 
-- Deploy to GitHub Pages
-- Configure Supabase production environment
-- Set up CI/CD pipeline
+   - Deploy to GitHub Pages
+   - Configure Supabase production environment
+   - Set up CI/CD pipeline
 
 3. **Post-Launch**
 
-- Monitor for any issues
-- Gather initial feedback
-- Plan next iteration of features
+   - Monitor for any issues
+   - Gather initial feedback
+   - Plan next iteration of features
 
 ---
 
@@ -302,31 +306,31 @@ family-allowance-tracker/
 
 1. **Week 1: Setup and Foundation** (Tasks 1-5)
 
-- Initialize project and install dependencies
-- Set up Supabase integration
-- Design database schema
-- Configure CI/CD
+   - Initialize project and install dependencies
+   - Set up Supabase integration
+   - Design database schema
+   - Configure CI/CD
 
 2. **Week 2: Core Functionality** (Tasks 6-10)
 
-- Implement authentication
-- Create family management
-- Build scoring system
-- Develop calendar interface
+   - Implement authentication
+   - Create family management
+   - Build scoring system
+   - Develop calendar interface
 
 3. **Week 3: Advanced Features** (Tasks 11-17)
 
-- Implement budget cycle logic
-- Create monthly summary
-- Build vacation day selection
-- Add data visualization
+   - Implement budget cycle logic
+   - Create monthly summary
+   - Build vacation day selection
+   - Add data visualization
 
 4. **Week 4: Integration and Testing** (Tasks 18-22)
 
-- Set up routing and navigation
-- Create settings page
-- Design responsive layout
-- Finalize deployment
-- Conduct testing and bug fixes
+   - Set up routing and navigation
+   - Create settings page
+   - Design responsive layout
+   - Finalize deployment
+   - Conduct testing and bug fixes
 
 This detailed plan provides a roadmap for implementing the Family Allowance Tracker web app. By following these structured steps, you'll be able to build a functional, user-friendly application that helps parents track their children's allowances based on their daily behavior scores.
