@@ -70,6 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
           // Check if it's a "not found" error - this is normal for new users
           if (error.code === 'PGRST116') {
             setFamilyMember(null);
+            toast({
+              title: 'No Family Member Data',
+              description: 'Your account is not linked to any family member yet',
+              variant: 'warning',
+            });
             return;
           }
 
