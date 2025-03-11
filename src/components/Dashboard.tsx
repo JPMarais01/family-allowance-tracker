@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import { DailyScores } from './family/DailyScores';
 import { FamilyManagement } from './family/FamilyManagement';
 
 export function Dashboard(): React.ReactElement {
@@ -93,14 +94,7 @@ export function Dashboard(): React.ReactElement {
 
             {activeTab === 'family' && <FamilyManagement />}
 
-            {activeTab === 'scores' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Daily Scores</h2>
-                <p className="text-gray-500 italic">
-                  Daily scoring will be available once you've set up your family.
-                </p>
-              </div>
-            )}
+            {activeTab === 'scores' && <DailyScores />}
           </div>
         </div>
       </div>
