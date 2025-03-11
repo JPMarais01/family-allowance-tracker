@@ -35,7 +35,9 @@ export function DailyScores(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  }, [user, familyData]);
+    // Remove familyData from the dependency array to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Load family members when component mounts
   useEffect(() => {

@@ -35,7 +35,9 @@ export function ChildScoreCard({ member, date }: ChildScoreCardProps): React.Rea
     } finally {
       setLoading(false);
     }
-  }, [user, member.id, date, familyData]);
+    // Remove familyData from the dependency array to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, member.id, date]);
 
   // Load score when component mounts or when date/member changes
   useEffect(() => {
