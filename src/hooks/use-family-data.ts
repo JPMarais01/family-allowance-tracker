@@ -3,12 +3,16 @@ import { useCallback, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   AddFamilyMemberInput,
+  BudgetCycle,
   CreateFamilyInput,
+  DailyScore,
   Family,
   FamilyMember,
   FamilySettings,
+  SaveDailyScoreInput,
   UpdateFamilyMemberInput,
 } from '../lib/types';
+import { formatDate } from '../lib/utils';
 import { toast } from './use-toast';
 
 // Define the return type for the hook
@@ -22,6 +26,17 @@ type UseFamilyDataReturn = {
   updateFamilyMember: (input: UpdateFamilyMemberInput) => Promise<FamilyMember | null>;
   deleteFamilyMember: (memberId: string) => Promise<boolean>;
   getFamilySettings: (familyId: string) => Promise<FamilySettings | null>;
+  // New score-related functions
+  getDailyScores: (familyMemberId: string, startDate: Date, endDate: Date) => Promise<DailyScore[]>;
+  getDailyScore: (familyMemberId: string, date: Date) => Promise<DailyScore | null>;
+  saveDailyScore: (input: SaveDailyScoreInput) => Promise<DailyScore | null>;
+  deleteDailyScore: (scoreId: string) => Promise<boolean>;
+  getBudgetCycleForDate: (familyId: string, date: Date) => Promise<BudgetCycle | null>;
+  createBudgetCycle: (
+    familyId: string,
+    currentDate: Date,
+    cycleStartDay: number
+  ) => Promise<BudgetCycle | null>;
 };
 
 // Accept user as a parameter instead of using useAuth
@@ -477,6 +492,358 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     [user]
   );
 
+  // Get daily scores for a family member within a date range
+  const getDailyScores = useCallback(
+    async (familyMemberId: string, startDate: Date, endDate: Date): Promise<DailyScore[]> => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('daily_scores')
+          .select('*')
+          .eq('family_member_id', familyMemberId)
+          .gte('date', formatDate(startDate))
+          .lte('date', formatDate(endDate))
+          .order('date', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching daily scores:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch daily scores',
+            variant: 'destructive',
+          });
+          return [];
+        }
+
+        return data || [];
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Get a single daily score for a family member on a specific date
+  const getDailyScore = useCallback(
+    async (familyMemberId: string, date: Date): Promise<DailyScore | null> => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('daily_scores')
+          .select('*')
+          .eq('family_member_id', familyMemberId)
+          .eq('date', formatDate(date))
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No rows returned, which is fine
+            return null;
+          }
+          console.error('Error fetching daily score:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch daily score',
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        return data;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Save a daily score (create or update)
+  const saveDailyScore = useCallback(
+    async (input: SaveDailyScoreInput): Promise<DailyScore | null> => {
+      try {
+        setLoading(true);
+
+        // If this is a vacation day, we need to get the default vacation score from family settings
+        let scoreToUse = input.score;
+        if (input.is_vacation) {
+          // We need to get the family ID first
+          const { data: memberData, error: memberError } = await supabase
+            .from('family_members')
+            .select('family_id')
+            .eq('id', input.family_member_id)
+            .single();
+
+          if (memberError) {
+            console.error('Error fetching family member:', memberError);
+          } else if (memberData) {
+            const settings = await getFamilySettings(memberData.family_id);
+            if (settings && settings.vacation_default_score !== null) {
+              scoreToUse = settings.vacation_default_score;
+            }
+          }
+        }
+
+        if (input.id) {
+          // Update existing score
+          const { data, error } = await supabase
+            .from('daily_scores')
+            .update({
+              score: scoreToUse,
+              is_vacation: input.is_vacation,
+              notes: input.notes || null,
+            })
+            .eq('id', input.id)
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Error updating daily score:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to update daily score',
+              variant: 'destructive',
+            });
+            return null;
+          }
+
+          toast({
+            title: 'Success',
+            description: 'Daily score updated successfully',
+          });
+          return data;
+        } else {
+          // Create new score
+          const { data, error } = await supabase
+            .from('daily_scores')
+            .insert({
+              family_member_id: input.family_member_id,
+              budget_cycle_id: input.budget_cycle_id,
+              score: scoreToUse,
+              date: input.date,
+              is_vacation: input.is_vacation,
+              notes: input.notes || null,
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Error creating daily score:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to create daily score',
+              variant: 'destructive',
+            });
+            return null;
+          }
+
+          toast({
+            title: 'Success',
+            description: 'Daily score saved successfully',
+          });
+          return data;
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getFamilySettings]
+  );
+
+  // Delete a daily score
+  const deleteDailyScore = useCallback(async (scoreId: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.from('daily_scores').delete().eq('id', scoreId);
+
+      if (error) {
+        console.error('Error deleting daily score:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to delete daily score',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Daily score deleted successfully',
+      });
+      return true;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Create a new budget cycle
+  const createBudgetCycle = useCallback(
+    async (
+      familyId: string,
+      currentDate: Date,
+      cycleStartDay: number
+    ): Promise<BudgetCycle | null> => {
+      try {
+        setLoading(true);
+
+        // Calculate the start and end dates for the budget cycle
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth(); // Note: JavaScript months are 0-indexed (0=Jan, 1=Feb, 2=Mar, etc.)
+        const day = currentDate.getDate();
+
+        let startDate: Date;
+        let endDate: Date;
+
+        if (day >= cycleStartDay) {
+          // We're in the current cycle that started in the current month
+          startDate = new Date(year, month, cycleStartDay);
+          // End date is the day before the start day in the next month
+          endDate = new Date(year, month + 1, cycleStartDay - 1);
+        } else {
+          // We're in a cycle that started in the previous month
+          startDate = new Date(year, month - 1, cycleStartDay);
+          // End date is the day before the start day in the current month
+          endDate = new Date(year, month, cycleStartDay - 1);
+        }
+
+        // Handle month/year rollover for date calculations
+        // This ensures we get the correct date even when dealing with different month lengths
+        // or when the cycleStartDay might not exist in certain months (like 31 in February)
+        startDate = new Date(startDate);
+        endDate = new Date(endDate);
+
+        // Format dates for Supabase
+        const formattedStartDate = formatDate(startDate);
+        const formattedEndDate = formatDate(endDate);
+
+        // First check if a budget cycle with these dates already exists
+        const { data: existingCycle, error: checkError } = await supabase
+          .from('budget_cycles')
+          .select('*')
+          .eq('family_id', familyId)
+          .eq('start_date', formattedStartDate)
+          .eq('end_date', formattedEndDate)
+          .single();
+
+        if (!checkError && existingCycle) {
+          return existingCycle;
+        }
+
+        // Create the budget cycle
+        const { data, error } = await supabase
+          .from('budget_cycles')
+          .insert({
+            family_id: familyId,
+            start_date: formattedStartDate,
+            end_date: formattedEndDate,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating budget cycle:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to create budget cycle',
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Unexpected error creating budget cycle:', error);
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while creating budget cycle',
+          variant: 'destructive',
+        });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Get the budget cycle for a specific date
+  const getBudgetCycleForDate = useCallback(
+    async (familyId: string, date: Date): Promise<BudgetCycle | null> => {
+      try {
+        setLoading(true);
+        const formattedDate = formatDate(date);
+
+        // First, check if a budget cycle exists for this date
+        const { data, error } = await supabase
+          .from('budget_cycles')
+          .select('*')
+          .eq('family_id', familyId)
+          .lte('start_date', formattedDate)
+          .gte('end_date', formattedDate)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No budget cycle found, create one
+            const settings = await getFamilySettings(familyId);
+            if (!settings) {
+              console.error('No family settings found');
+              return null;
+            }
+
+            // Show a warning toast that we're creating a new budget cycle
+            toast({
+              title: 'New Budget Period',
+              description:
+                'Creating a new budget period for this date based on your family settings.',
+              variant: 'default',
+            });
+
+            // Create a new budget cycle based on the settings
+            const newBudgetCycle = await createBudgetCycle(
+              familyId,
+              date,
+              settings.budget_cycle_start_day
+            );
+
+            // Verify the budget cycle was created successfully
+            if (!newBudgetCycle) {
+              console.error('Failed to create new budget cycle');
+              toast({
+                title: 'Error',
+                description: 'Failed to create new budget cycle',
+                variant: 'destructive',
+              });
+              return null;
+            }
+
+            return newBudgetCycle;
+          }
+
+          console.error('Error fetching budget cycle:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch budget cycle',
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Error in getBudgetCycleForDate:', error);
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while getting budget cycle',
+          variant: 'destructive',
+        });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getFamilySettings, createBudgetCycle]
+  );
+
   return {
     loading,
     getFamilyByOwnerId,
@@ -487,5 +854,12 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     updateFamilyMember,
     deleteFamilyMember,
     getFamilySettings,
+    // New score-related functions
+    getDailyScores,
+    getDailyScore,
+    saveDailyScore,
+    deleteDailyScore,
+    getBudgetCycleForDate,
+    createBudgetCycle,
   };
 }

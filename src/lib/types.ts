@@ -49,3 +49,35 @@ export interface UpdateFamilyMemberInput {
   role?: 'parent' | 'child';
   base_allowance?: number;
 }
+
+// New types for the scoring system
+export interface DailyScore {
+  id: string;
+  family_member_id: string;
+  budget_cycle_id: string;
+  score: number;
+  date: string;
+  is_vacation: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SaveDailyScoreInput {
+  id?: string; // Optional for updates
+  family_member_id: string;
+  budget_cycle_id: string;
+  score: number;
+  date: string;
+  is_vacation: boolean;
+  notes?: string;
+}
+
+export interface BudgetCycle {
+  id: string;
+  family_id: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  updated_at: string;
+}

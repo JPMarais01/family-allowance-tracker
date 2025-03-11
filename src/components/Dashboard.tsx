@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import { DailyScores } from './family/DailyScores';
 import { FamilyManagement } from './family/FamilyManagement';
 
 export function Dashboard(): React.ReactElement {
   const { user, familyMember } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'scores'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'scores'>(
+    familyMember ? 'scores' : 'overview'
+  );
 
   if (!user) {
     return <div>Please log in to access the dashboard.</div>;
@@ -55,7 +58,7 @@ export function Dashboard(): React.ReactElement {
               <p className="text-sm">
                 <span className="text-gray-500 dark:text-gray-400">Logged in as:</span>
                 <br />
-                <span className="font-medium">{user.email}</span>
+                <span className="font-medium">{familyMember?.name || user.email}</span>
               </p>
               {familyMember && (
                 <p className="text-sm">
@@ -91,14 +94,7 @@ export function Dashboard(): React.ReactElement {
 
             {activeTab === 'family' && <FamilyManagement />}
 
-            {activeTab === 'scores' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Daily Scores</h2>
-                <p className="text-gray-500 italic">
-                  Daily scoring will be available once you've set up your family.
-                </p>
-              </div>
-            )}
+            {activeTab === 'scores' && <DailyScores />}
           </div>
         </div>
       </div>
