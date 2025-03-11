@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/use-auth';
 import { useFamilyData } from '../../hooks/use-family-data';
 import { FamilyMember } from '../../lib/types';
@@ -14,6 +14,9 @@ export function DailyScores(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Extract needed functions to avoid dependency issues
+  const { getFamilyByOwnerId, getFamilyMembers } = familyData;
+
   const loadFamilyMembers = useCallback(async () => {
     if (!user) {
       return;
@@ -22,9 +25,9 @@ export function DailyScores(): React.ReactElement {
     try {
       setLoading(true);
       setError(null);
-      const family = await familyData.getFamilyByOwnerId();
+      const family = await getFamilyByOwnerId();
       if (family) {
-        const members = await familyData.getFamilyMembers(family.id);
+        const members = await getFamilyMembers(family.id);
         setFamilyMembers(members.filter(member => member.role === 'child'));
       } else {
         setError('Unable to find family information. Please create a family first.');
@@ -35,14 +38,18 @@ export function DailyScores(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-    // Remove familyData from the dependency array to prevent infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, getFamilyByOwnerId, getFamilyMembers]);
 
   // Load family members when component mounts
   useEffect(() => {
     loadFamilyMembers();
   }, [loadFamilyMembers]);
+
+  // Memoize child family members to prevent unnecessary re-renders
+  const childMembers = useMemo(
+    () => familyMembers.filter(member => member.role === 'child'),
+    [familyMembers]
+  );
 
   if (loading) {
     return (
@@ -67,7 +74,7 @@ export function DailyScores(): React.ReactElement {
     );
   }
 
-  if (familyMembers.length === 0) {
+  if (childMembers.length === 0) {
     return (
       <div>
         <h2 className="text-2xl font-bold mb-4">Daily Scores</h2>
@@ -91,7 +98,7 @@ export function DailyScores(): React.ReactElement {
       </div>
 
       <div className="space-y-6">
-        {familyMembers.map(member => (
+        {childMembers.map(member => (
           <ChildScoreCard key={member.id} member={member} date={selectedDate} />
         ))}
       </div>

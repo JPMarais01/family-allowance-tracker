@@ -19,6 +19,9 @@ export function ChildScoreCard({ member, date }: ChildScoreCardProps): React.Rea
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
+  // Extract needed function to avoid dependency issues
+  const { getDailyScore } = familyData;
+
   const loadScore = useCallback(async () => {
     if (!user) {
       return;
@@ -27,7 +30,7 @@ export function ChildScoreCard({ member, date }: ChildScoreCardProps): React.Rea
     try {
       setLoading(true);
       setError(null);
-      const existingScore = await familyData.getDailyScore(member.id, date);
+      const existingScore = await getDailyScore(member.id, date);
       setScore(existingScore);
     } catch (error) {
       console.error('Error loading score:', error);
@@ -35,9 +38,7 @@ export function ChildScoreCard({ member, date }: ChildScoreCardProps): React.Rea
     } finally {
       setLoading(false);
     }
-    // Remove familyData from the dependency array to prevent infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, member.id, date]);
+  }, [user, member.id, date, getDailyScore]);
 
   // Load score when component mounts or when date/member changes
   useEffect(() => {

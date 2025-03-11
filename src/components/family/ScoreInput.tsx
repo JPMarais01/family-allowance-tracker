@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/use-auth';
 import { useFamilyData } from '../../hooks/use-family-data';
 import { toast } from '../../hooks/use-toast';
@@ -34,7 +34,12 @@ export function ScoreInput({
     existingScore?.budget_cycle_id || null
   );
   const [loadingBudgetCycle, setLoadingBudgetCycle] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isFetchingCycleRef = useRef(false);
+
+  // Extract needed functions to avoid dependency issues
+  const { getFamilyByOwnerId, getBudgetCycleForDate, saveDailyScore, deleteDailyScore } =
+    familyData;
 
   useEffect(() => {
     const getBudgetCycle = async (): Promise<void> => {
@@ -46,12 +51,12 @@ export function ScoreInput({
         isFetchingCycleRef.current = true;
         setLoadingBudgetCycle(true);
         setError(null);
-        const family = await familyData.getFamilyByOwnerId();
+        const family = await getFamilyByOwnerId();
         if (family) {
           // Small delay to prevent UI flashing
           await new Promise(resolve => setTimeout(resolve, 500));
 
-          const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
+          const budgetCycle = await getBudgetCycleForDate(family.id, date);
           if (budgetCycle) {
             setBudgetCycleId(budgetCycle.id);
           } else {
@@ -75,7 +80,7 @@ export function ScoreInput({
     if (!budgetCycleId) {
       getBudgetCycle();
     }
-  }, [user, date, familyData, budgetCycleId]);
+  }, [user, date, getFamilyByOwnerId, getBudgetCycleForDate, budgetCycleId]);
 
   const handleSave = async (): Promise<void> => {
     if (!budgetCycleId) {
@@ -83,9 +88,9 @@ export function ScoreInput({
       try {
         setError(null);
         setSaving(true);
-        const family = await familyData.getFamilyByOwnerId();
+        const family = await getFamilyByOwnerId();
         if (family) {
-          const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
+          const budgetCycle = await getBudgetCycleForDate(family.id, date);
           if (budgetCycle) {
             setBudgetCycleId(budgetCycle.id);
             // Continue with save after setting the budget cycle ID
@@ -127,7 +132,7 @@ export function ScoreInput({
         notes: notes || undefined,
       };
 
-      const result = await familyData.saveDailyScore(input);
+      const result = await saveDailyScore(input);
       if (result) {
         toast({
           title: existingScore ? 'Score Updated' : 'Score Added',
@@ -144,6 +149,40 @@ export function ScoreInput({
       setSaving(false);
     }
   };
+
+  const handleDelete = useCallback(() => {
+    if (existingScore) {
+      setShowDeleteConfirm(true);
+    }
+  }, [existingScore]);
+
+  const handleDeleteConfirmed = useCallback(async () => {
+    if (!existingScore) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      setShowDeleteConfirm(false);
+
+      const success = await deleteDailyScore(existingScore.id);
+      if (success) {
+        toast({
+          title: 'Score Deleted',
+          description: `Successfully deleted score for ${formatDate(date)}.`,
+        });
+        onSaved();
+      } else {
+        setError('Failed to delete score. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting score:', error);
+      setError('An error occurred while deleting the score. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }, [existingScore, date, deleteDailyScore, onSaved]);
 
   if (loadingBudgetCycle) {
     return (
@@ -199,10 +238,35 @@ export function ScoreInput({
         <Button onClick={handleSave} disabled={saving || !!error || !budgetCycleId}>
           {saving ? 'Saving...' : 'Save Score'}
         </Button>
+        {existingScore && (
+          <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+            Delete
+          </Button>
+        )}
         <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancel
         </Button>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg max-w-md w-full shadow-lg">
+            <h3 className="text-lg font-semibold mb-4">Confirm Deletion</h3>
+            <p className="mb-6 text-muted-foreground">
+              Are you sure you want to delete this score? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteConfirmed}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

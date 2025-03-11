@@ -792,9 +792,9 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
 
             // Show a warning toast that we're creating a new budget cycle
             toast({
-              title: 'Creating New Budget Period',
+              title: 'New Budget Period',
               description:
-                'No budget period found for this date. Creating a new one automatically.',
+                'Creating a new budget period for this date based on your family settings.',
               variant: 'default',
             });
 
