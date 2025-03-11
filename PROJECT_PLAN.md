@@ -189,71 +189,66 @@ family-allowance-tracker/
    - Display a full monthly or weekly calendar view for each child's scores.
    - Offer a click or tap-based UI to open a daily score input form.
    - Visually highlight vacation days and differentiate them from normal days.
+   - Allow for bulk selection of vacation days.
+
+5. **Create Monthly Summary & Allowance Calculation**
+
+   - Generate reports showing daily scores, average performance, and allowance calculations.
+   - Implement budget cycle management (25th to 24th tracking periods).
+   - Create utility functions to compute allowance based on base amount and average score.
+   - Display real-time allowance progress throughout the current cycle.
+   - Support closing out current budget cycle and starting a new one.
 
 ---
 
-### Phase 3: Cycle Management and Reports
+### Phase 3: Dashboard Development
 
-1. **Implement Budget Cycle Logic**
-
-   - Manage dates and calculations for a custom cycle running from the 25th to the 24th.
-   - Include utility methods to retrieve current or specific-month cycle start/end dates.
-   - Accommodate edge cases for new months and year boundaries.
-
-2. **Create Monthly Summary Component**
-
-   - Generate reports showing daily scores, average performance, and partial allowance calculations.
-   - Summarize each child's data over a given period (e.g., monthly or custom cycle).
-   - Present aggregated performance statistics (like average scores).
-
-3. **Create Vacation Day Selection**
-
-   - Provide a bulk date-selection interface to mark multiple days as vacation.
-   - Assign a default score for vacation days.
-   - Persist these details in daily score records.
-
----
-
-### Phase 4: Final Components and Integration
-
-1. **Implement Dashboard Components**
-
-   - Build a parent dashboard for viewing all children, entering daily scores, and managing allowances/trends.
-   - Provide quick stats (e.g., average scores for the last 7/30 days or current cycle).
-   - Include multiple tabs or sections within the dashboard for calendar, trend charts, and vacation settings.
-
-2. **Create Child Dashboard**
-
-   - Offer a simplified view for a logged-in child showing their own progress and a summary of recent scores.
-   - Display score history and cumulative performance in an easy-to-read format.
-   - Motivate consistent participation through visual progress indicators (e.g., star icons).
-
-3. **Build Data Visualization**
+1. **Implement Data Visualization**
 
    - Use chart components to graph daily scores across a time range.
    - Toggle between different date ranges (last month, last 3 months, current budget cycle).
    - Clearly indicate days without scores or those marked as vacation.
+   - Present aggregated performance statistics visually.
 
-4. **Add Allowance Calculation**
+2. **Build Parent Dashboard**
 
-   - Expose utility functions that compute final allowance based on base allowance and average score performance.
-   - Integrate logic into monthly/weekly summaries and dashboards.
-   - Display real-time allowance progress and final calculated amounts.
+   - Create unified interface for viewing all children, entering scores, and managing allowances.
+   - Include quick stats (7/30-day averages, current cycle progress).
+   - Integrate calendar, trend charts, and vacation management in a tabbed interface.
+   - Provide access to family-wide settings and management features.
+
+3. **Create Child Dashboard**
+
+   - Offer a simplified view for a logged-in child showing their own progress.
+   - Display score history and cumulative performance in a child-friendly format.
+   - Implement visual progress indicators for motivation (stars, badges, etc.).
+   - Show personalized allowance calculations and statistics.
 
 ---
 
-### Phase 5: Final Integration and Deployment
+### Phase 4: Final Integration and Deployment
 
 1. **Set Up Routing and Navigation**
 
    - Configure a router to define paths for login, dashboards, settings, and child-specific routes.
-   - Ensure child routes are protected by appropriate role-based guards.
+   - Implement role-based access control for protected pages.
    - Set up a single-page application fallback for deployment on GitHub Pages.
 
-2. **Create Settings Page**
-   - Provide edit forms for family settings (e.g., cycle start day, default vacation score).
-   - Allow adding/editing children and their allowances from one organized place.
-   - Maintain ease of updating family-wide configuration without intrusive code changes.
+2. **Enhance Family Settings Page**
+
+   - Extend the existing family management interface with edit forms for family settings:
+     - Budget cycle configuration (start/end dates)
+     - Default vacation score preferences
+     - Allowance calculation rules
+   - Create system for updating all family-wide configuration without code changes.
+   - Consolidate family settings and member management in one organized interface.
+
+3. **Final Testing and Optimization**
+
+   - Ensure responsive design works on all target devices.
+   - Perform comprehensive testing of all user flows.
+   - Optimize performance and loading times.
+   - Finalize deployment configuration.
 
 ---
 
@@ -302,35 +297,37 @@ family-allowance-tracker/
 
 ---
 
-## Timeline
+## Revised Timeline
 
-1. **Week 1: Setup and Foundation** (Tasks 1-5)
+1. **Week 1: Setup, Foundation, and Authentication** - COMPLETE
 
    - Initialize project and install dependencies
    - Set up Supabase integration
    - Design database schema
-   - Configure CI/CD
+   - Implement authentication and family management
+   - Create basic scoring system
 
-2. **Week 2: Core Functionality** (Tasks 6-10)
+2. **Week 2: Calendar and Calculation Logic**
 
-   - Implement authentication
-   - Create family management
-   - Build scoring system
-   - Develop calendar interface
+   - Build calendar interface with score entry
+   - Implement vacation day selection and management
+   - Create monthly summary component
+   - Develop allowance calculation logic
+   - Set up budget cycle management
 
-3. **Week 3: Advanced Features** (Tasks 11-17)
+3. **Week 3: Dashboard Development**
 
-   - Implement budget cycle logic
-   - Create monthly summary
-   - Build vacation day selection
-   - Add data visualization
+   - Implement data visualization components
+   - Create parent dashboard with integrated features
+   - Build child dashboard with simplified interface
+   - Add visual progress indicators and motivational elements
 
-4. **Week 4: Integration and Testing** (Tasks 18-22)
+4. **Week 4: Final Integration and Deployment**
 
    - Set up routing and navigation
    - Create settings page
-   - Design responsive layout
+   - Conduct comprehensive testing
+   - Optimize performance
    - Finalize deployment
-   - Conduct testing and bug fixes
 
 This detailed plan provides a roadmap for implementing the Family Allowance Tracker web app. By following these structured steps, you'll be able to build a functional, user-friendly application that helps parents track their children's allowances based on their daily behavior scores.
