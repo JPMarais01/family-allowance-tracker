@@ -4,7 +4,9 @@ import { FamilyManagement } from './family/FamilyManagement';
 
 export function Dashboard(): React.ReactElement {
   const { user, familyMember } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'scores'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'scores'>(
+    familyMember ? 'scores' : 'overview'
+  );
 
   if (!user) {
     return <div>Please log in to access the dashboard.</div>;
