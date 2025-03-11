@@ -563,12 +563,32 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
       try {
         setLoading(true);
 
+        // If this is a vacation day, we need to get the default vacation score from family settings
+        let scoreToUse = input.score;
+        if (input.is_vacation) {
+          // We need to get the family ID first
+          const { data: memberData, error: memberError } = await supabase
+            .from('family_members')
+            .select('family_id')
+            .eq('id', input.family_member_id)
+            .single();
+
+          if (memberError) {
+            console.error('Error fetching family member:', memberError);
+          } else if (memberData) {
+            const settings = await getFamilySettings(memberData.family_id);
+            if (settings && settings.vacation_default_score !== null) {
+              scoreToUse = settings.vacation_default_score;
+            }
+          }
+        }
+
         if (input.id) {
           // Update existing score
           const { data, error } = await supabase
             .from('daily_scores')
             .update({
-              score: input.score,
+              score: scoreToUse,
               is_vacation: input.is_vacation,
               notes: input.notes || null,
             })
@@ -598,7 +618,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
             .insert({
               family_member_id: input.family_member_id,
               budget_cycle_id: input.budget_cycle_id,
-              score: input.score,
+              score: scoreToUse,
               date: input.date,
               is_vacation: input.is_vacation,
               notes: input.notes || null,
@@ -626,7 +646,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         setLoading(false);
       }
     },
-    []
+    [getFamilySettings]
   );
 
   // Delete a daily score
@@ -655,6 +675,96 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     }
   }, []);
 
+  // Create a new budget cycle
+  const createBudgetCycle = useCallback(
+    async (
+      familyId: string,
+      currentDate: Date,
+      cycleStartDay: number
+    ): Promise<BudgetCycle | null> => {
+      try {
+        setLoading(true);
+
+        // Calculate the start and end dates for the budget cycle
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth(); // Note: JavaScript months are 0-indexed (0=Jan, 1=Feb, 2=Mar, etc.)
+        const day = currentDate.getDate();
+
+        let startDate: Date;
+        let endDate: Date;
+
+        if (day >= cycleStartDay) {
+          // We're in the current cycle that started in the current month
+          startDate = new Date(year, month, cycleStartDay);
+          // End date is the day before the start day in the next month
+          endDate = new Date(year, month + 1, cycleStartDay - 1);
+        } else {
+          // We're in a cycle that started in the previous month
+          startDate = new Date(year, month - 1, cycleStartDay);
+          // End date is the day before the start day in the current month
+          endDate = new Date(year, month, cycleStartDay - 1);
+        }
+
+        // Handle month/year rollover for date calculations
+        // This ensures we get the correct date even when dealing with different month lengths
+        // or when the cycleStartDay might not exist in certain months (like 31 in February)
+        startDate = new Date(startDate);
+        endDate = new Date(endDate);
+
+        // Format dates for Supabase
+        const formattedStartDate = formatDate(startDate);
+        const formattedEndDate = formatDate(endDate);
+
+        // First check if a budget cycle with these dates already exists
+        const { data: existingCycle, error: checkError } = await supabase
+          .from('budget_cycles')
+          .select('*')
+          .eq('family_id', familyId)
+          .eq('start_date', formattedStartDate)
+          .eq('end_date', formattedEndDate)
+          .single();
+
+        if (!checkError && existingCycle) {
+          return existingCycle;
+        }
+
+        // Create the budget cycle
+        const { data, error } = await supabase
+          .from('budget_cycles')
+          .insert({
+            family_id: familyId,
+            start_date: formattedStartDate,
+            end_date: formattedEndDate,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating budget cycle:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to create budget cycle',
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Unexpected error creating budget cycle:', error);
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while creating budget cycle',
+          variant: 'destructive',
+        });
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   // Get the budget cycle for a specific date
   const getBudgetCycleForDate = useCallback(
     async (familyId: string, date: Date): Promise<BudgetCycle | null> => {
@@ -680,8 +790,33 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
               return null;
             }
 
+            // Show a warning toast that we're creating a new budget cycle
+            toast({
+              title: 'Creating New Budget Period',
+              description:
+                'No budget period found for this date. Creating a new one automatically.',
+              variant: 'default',
+            });
+
             // Create a new budget cycle based on the settings
-            return await createBudgetCycle(familyId, date, settings.budget_cycle_start_day);
+            const newBudgetCycle = await createBudgetCycle(
+              familyId,
+              date,
+              settings.budget_cycle_start_day
+            );
+
+            // Verify the budget cycle was created successfully
+            if (!newBudgetCycle) {
+              console.error('Failed to create new budget cycle');
+              toast({
+                title: 'Error',
+                description: 'Failed to create new budget cycle',
+                variant: 'destructive',
+              });
+              return null;
+            }
+
+            return newBudgetCycle;
           }
 
           console.error('Error fetching budget cycle:', error);
@@ -694,68 +829,19 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         }
 
         return data;
+      } catch (error) {
+        console.error('Error in getBudgetCycleForDate:', error);
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while getting budget cycle',
+          variant: 'destructive',
+        });
+        return null;
       } finally {
         setLoading(false);
       }
     },
-    [getFamilySettings]
-  );
-
-  // Create a new budget cycle
-  const createBudgetCycle = useCallback(
-    async (
-      familyId: string,
-      currentDate: Date,
-      cycleStartDay: number
-    ): Promise<BudgetCycle | null> => {
-      try {
-        setLoading(true);
-
-        // Calculate the start and end dates for the budget cycle
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const day = currentDate.getDate();
-
-        let startDate: Date;
-        let endDate: Date;
-
-        if (day >= cycleStartDay) {
-          // We're in the current cycle
-          startDate = new Date(year, month, cycleStartDay);
-          endDate = new Date(year, month + 1, cycleStartDay - 1);
-        } else {
-          // We're in the previous cycle
-          startDate = new Date(year, month - 1, cycleStartDay);
-          endDate = new Date(year, month, cycleStartDay - 1);
-        }
-
-        // Create the budget cycle
-        const { data, error } = await supabase
-          .from('budget_cycles')
-          .insert({
-            family_id: familyId,
-            start_date: formatDate(startDate),
-            end_date: formatDate(endDate),
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error creating budget cycle:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to create budget cycle',
-            variant: 'destructive',
-          });
-          return null;
-        }
-
-        return data;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
+    [getFamilySettings, createBudgetCycle]
   );
 
   return {

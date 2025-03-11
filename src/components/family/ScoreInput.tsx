@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/use-auth';
 import { useFamilyData } from '../../hooks/use-family-data';
 import { toast } from '../../hooks/use-toast';
@@ -34,22 +34,28 @@ export function ScoreInput({
     existingScore?.budget_cycle_id || null
   );
   const [loadingBudgetCycle, setLoadingBudgetCycle] = useState<boolean>(false);
+  const isFetchingCycleRef = useRef(false);
 
   useEffect(() => {
     const getBudgetCycle = async (): Promise<void> => {
-      if (!user) {
+      if (!user || isFetchingCycleRef.current) {
         return;
       }
 
       try {
+        isFetchingCycleRef.current = true;
         setLoadingBudgetCycle(true);
         setError(null);
         const family = await familyData.getFamilyByOwnerId();
         if (family) {
+          // Small delay to prevent UI flashing
+          await new Promise(resolve => setTimeout(resolve, 500));
+
           const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
           if (budgetCycle) {
             setBudgetCycleId(budgetCycle.id);
           } else {
+            console.error('Failed to get or create budget cycle');
             setError('Unable to determine budget cycle. Please try again later.');
           }
         } else {
@@ -62,6 +68,7 @@ export function ScoreInput({
         );
       } finally {
         setLoadingBudgetCycle(false);
+        isFetchingCycleRef.current = false;
       }
     };
 
@@ -72,10 +79,40 @@ export function ScoreInput({
 
   const handleSave = async (): Promise<void> => {
     if (!budgetCycleId) {
-      setError('Unable to determine budget cycle. Please try again later.');
+      // Try to get the budget cycle one more time before giving up
+      try {
+        setError(null);
+        setSaving(true);
+        const family = await familyData.getFamilyByOwnerId();
+        if (family) {
+          const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
+          if (budgetCycle) {
+            setBudgetCycleId(budgetCycle.id);
+            // Continue with save after setting the budget cycle ID
+            await saveScore(budgetCycle.id);
+            return;
+          } else {
+            console.error('Failed to get or create budget cycle on retry');
+          }
+        } else {
+          console.error('Failed to get family on retry');
+        }
+      } catch (error) {
+        console.error('Error getting budget cycle before save:', error);
+      } finally {
+        setSaving(false);
+      }
+
+      setError(
+        'Unable to determine budget cycle. Please try refreshing the page and trying again.'
+      );
       return;
     }
 
+    await saveScore(budgetCycleId);
+  };
+
+  const saveScore = async (cycleId: string): Promise<void> => {
     try {
       setSaving(true);
       setError(null);
@@ -83,7 +120,7 @@ export function ScoreInput({
       const input: SaveDailyScoreInput = {
         id: existingScore?.id,
         family_member_id: familyMemberId,
-        budget_cycle_id: budgetCycleId,
+        budget_cycle_id: cycleId,
         score,
         date: formatDate(date),
         is_vacation: isVacation,
