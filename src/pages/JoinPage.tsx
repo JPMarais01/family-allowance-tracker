@@ -13,6 +13,7 @@ export function JoinPage(): React.ReactElement {
   const token = searchParams.get('token');
   const navigate = useNavigate();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [invitation, setInvitation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

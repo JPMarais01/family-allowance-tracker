@@ -16,6 +16,7 @@ const errorMessages: Record<string, string> = {
  * @param fallbackMessage Optional fallback message if no mapping exists
  */
 export function handleAuthError(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error: any,
   fallbackMessage = 'An unexpected error occurred'
 ): void {

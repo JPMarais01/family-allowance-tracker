@@ -13,6 +13,7 @@ import { render, screen, waitFor } from './test/utils';
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(actual as any), // Spread the actual module
     useNavigate: vi.fn(),
   };
