@@ -55,7 +55,7 @@ export function Dashboard(): React.ReactElement {
               <p className="text-sm">
                 <span className="text-gray-500 dark:text-gray-400">Logged in as:</span>
                 <br />
-                <span className="font-medium">{user.email}</span>
+                <span className="font-medium">{familyMember?.name || user.email}</span>
               </p>
               {familyMember && (
                 <p className="text-sm">
