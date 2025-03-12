@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import { CalendarInterface } from './calendar';
 import { DailyScores } from './family/DailyScores';
 import { FamilyManagement } from './family/FamilyManagement';
 
 export function Dashboard(): React.ReactElement {
   const { user, familyMember } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'scores'>(
+  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'scores' | 'calendar'>(
     familyMember ? 'scores' : 'overview'
   );
 
@@ -51,6 +52,16 @@ export function Dashboard(): React.ReactElement {
               >
                 Daily Scores
               </button>
+              <button
+                onClick={() => setActiveTab('calendar')}
+                className={`w-full text-left px-4 py-2 rounded-md ${
+                  activeTab === 'calendar'
+                    ? 'bg-blue-500 text-white'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                Calendar
+              </button>
             </nav>
           </div>
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
@@ -95,6 +106,8 @@ export function Dashboard(): React.ReactElement {
             {activeTab === 'family' && <FamilyManagement />}
 
             {activeTab === 'scores' && <DailyScores />}
+
+            {activeTab === 'calendar' && <CalendarInterface />}
           </div>
         </div>
       </div>
