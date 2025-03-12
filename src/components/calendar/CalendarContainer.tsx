@@ -10,12 +10,14 @@ export type CalendarView = 'month' | 'week';
 interface CalendarContainerProps {
   selectedDate?: Date;
   onDateSelect?: (date: Date) => void;
+  familyMemberId?: string;
   className?: string;
 }
 
 export function CalendarContainer({
   selectedDate: externalSelectedDate,
   onDateSelect,
+  familyMemberId,
   className,
 }: CalendarContainerProps): React.ReactElement {
   // State for the current view date (month/week being viewed)
@@ -75,6 +77,7 @@ export function CalendarContainer({
         onDateSelect={handleDateSelect}
         startDate={visibleStartDate}
         endDate={visibleEndDate}
+        familyMemberId={familyMemberId}
       />
     </div>
   );
