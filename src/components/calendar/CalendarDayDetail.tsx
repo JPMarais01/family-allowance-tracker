@@ -1,8 +1,6 @@
 import { format } from 'date-fns';
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../hooks/use-auth';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useCalendar } from '../../hooks/use-calendar';
-import { useCalendarData } from '../../hooks/use-calendar-data';
 import { DailyScore } from '../../lib/types';
 import { ScoreDisplay } from '../family/ScoreDisplay';
 import { ScoreInput } from '../family/ScoreInput';
@@ -25,64 +23,54 @@ export function CalendarDayDetail({
   onScoreChange,
   existingScore,
 }: CalendarDayDetailProps): React.ReactElement | null {
-  const { loading } = useCalendar();
-  const { user } = useAuth();
-  const { fetchScoreForDate } = useCalendarData(user);
-  const [score, setScore] = useState<DailyScore | null>(existingScore || null);
+  // Hooks
+  const { loading: calendarLoading } = useCalendar();
+
+  // State
+  const [score, setScore] = useState<DailyScore | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch the score for the selected date when the dialog opens
+  // Reset state when dialog opens
   useEffect(() => {
-    const fetchScore = async (): Promise<void> => {
-      if (!date || !familyMemberId || !isOpen) {
-        return;
-      }
-
-      // If we already have the score from props, use it
+    if (isOpen) {
+      // Initialize with existing score if provided
       if (existingScore) {
         setScore(existingScore);
-        setIsEditing(!existingScore);
-        return;
+        setIsEditing(false);
+      } else {
+        setScore(null);
+        setIsEditing(true); // Go straight to edit mode for new scores
       }
+      setError(null);
+    }
+  }, [isOpen, existingScore]);
 
-      try {
-        setIsLoading(true);
-        const dailyScore = await fetchScoreForDate(familyMemberId, date);
-        setScore(dailyScore);
-        // If no score exists, go straight to edit mode
-        setIsEditing(!dailyScore);
-      } catch (error) {
-        console.error('Error fetching score:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchScore();
-  }, [date, familyMemberId, isOpen, existingScore, fetchScoreForDate]);
-
-  // Handle when score is saved
-  const handleScoreSaved = (): void => {
-    setIsEditing(false);
+  // Handle score saved
+  const handleScoreSaved = useCallback(() => {
+    // Refresh data first
     onScoreChange();
-  };
+    
+    // Then close dialog
+    onClose();
+  }, [onScoreChange, onClose]);
 
-  // Handle when edit is requested
-  const handleEdit = (): void => {
+  // Handle edit request
+  const handleEdit = useCallback(() => {
     setIsEditing(true);
-  };
+  }, []);
 
-  // Handle when edit is cancelled
-  const handleCancel = (): void => {
+  // Handle cancel
+  const handleCancel = useCallback(() => {
     // If there was no score and we cancel, close the dialog
     if (!score) {
       onClose();
     } else {
       setIsEditing(false);
     }
-  };
+  }, [score, onClose]);
 
+  // If no date, don't render
   if (!date) {
     return null;
   }
@@ -94,7 +82,13 @@ export function CalendarDayDetail({
           <DialogTitle>{format(date, 'EEEE, MMMM d, yyyy')}</DialogTitle>
         </DialogHeader>
 
-        {isLoading || loading ? (
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-md mb-4">
+            <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+          </div>
+        )}
+
+        {calendarLoading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>

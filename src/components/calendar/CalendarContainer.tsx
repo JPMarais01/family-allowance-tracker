@@ -46,10 +46,10 @@ export function CalendarContainer({
   }, [externalSelectedDate, setSelectedDate]);
 
   useEffect(() => {
-    if (externalFamilyMemberId) {
+    if (externalFamilyMemberId !== undefined && externalFamilyMemberId !== familyMemberId) {
       setFamilyMemberId(externalFamilyMemberId);
     }
-  }, [externalFamilyMemberId, setFamilyMemberId]);
+  }, [externalFamilyMemberId, familyMemberId, setFamilyMemberId]);
 
   // Handle date selection
   const handleDateSelect = (date: Date): void => {
@@ -63,11 +63,14 @@ export function CalendarContainer({
 
   // Handle family member change
   const handleFamilyMemberChange = (memberId: string): void => {
-    setFamilyMemberId(memberId);
+    // Only update if the value has changed
+    if (memberId !== familyMemberId) {
+      setFamilyMemberId(memberId);
 
-    // Call external handler if provided
-    if (onFamilyMemberChange) {
-      onFamilyMemberChange(memberId);
+      // Call external handler if provided
+      if (onFamilyMemberChange) {
+        onFamilyMemberChange(memberId);
+      }
     }
   };
 

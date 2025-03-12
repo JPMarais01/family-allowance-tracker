@@ -14,6 +14,7 @@ import { ReactNode, createContext, useCallback, useEffect, useMemo, useState } f
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
 import { useCalendarData } from '../hooks/use-calendar-data';
+import { supabase } from '../lib/supabase';
 import { DailyScore } from '../lib/types';
 
 // Define the calendar view type
@@ -46,7 +47,7 @@ export interface CalendarContextType {
   goToToday: () => void;
 
   // Data operations
-  fetchScores: () => Promise<void>;
+  fetchScores: (force?: boolean) => Promise<void>;
   saveScore: (score: number, date: Date, isVacation: boolean, notes?: string) => Promise<void>;
   setVacationDays: (startDate: Date, endDate: Date, isVacation: boolean) => Promise<void>;
 
@@ -63,6 +64,11 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
   const calendarData = useCalendarData(user);
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Add a ref to track the last fetch parameters
+  const lastFetchRef = React.useRef<string | null>(null);
+  // Add a ref to track the URL update timer
+  const urlUpdateTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Initialize state from URL parameters or defaults
   const initialViewType = (searchParams.get('view') as CalendarView) || 'month';
   const initialViewDate = searchParams.get('date')
@@ -77,9 +83,21 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
   // State for the selected date (day that is clicked/selected)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   // State for the family member being viewed
-  const [familyMemberId, setFamilyMemberId] = useState<string | null>(initialFamilyMemberId);
+  const [familyMemberId, setFamilyMemberIdState] = useState<string | null>(initialFamilyMemberId);
   // State for scores
   const [scores, setScores] = useState<DailyScore[]>([]);
+
+  // Custom setter for familyMemberId to prevent unnecessary updates
+  const setFamilyMemberId = useCallback(
+    (id: string | null): void => {
+      if (id !== familyMemberId) {
+        // Reset the lastFetchRef to force a new fetch when family member changes
+        lastFetchRef.current = null;
+        setFamilyMemberIdState(id);
+      }
+    },
+    [familyMemberId]
+  );
 
   // Calculate start and end dates based on view type and date
   const { startDate, endDate } = useMemo(() => {
@@ -99,39 +117,85 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
   // Update URL parameters when state changes
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
-    params.set('view', viewType);
-    params.set('date', format(viewDate, 'yyyy-MM-dd'));
-    if (familyMemberId) {
-      params.set('memberId', familyMemberId);
-    } else {
-      params.delete('memberId');
+    const currentView = params.get('view');
+    const currentDate = params.get('date');
+    const currentMemberId = params.get('memberId');
+
+    // Only update if values have actually changed
+    let hasChanges = false;
+
+    if (currentView !== viewType) {
+      params.set('view', viewType);
+      hasChanges = true;
     }
-    setSearchParams(params);
+
+    const formattedDate = format(viewDate, 'yyyy-MM-dd');
+    if (currentDate !== formattedDate) {
+      params.set('date', formattedDate);
+      hasChanges = true;
+    }
+
+    if (familyMemberId && currentMemberId !== familyMemberId) {
+      params.set('memberId', familyMemberId);
+      hasChanges = true;
+    } else if (!familyMemberId && currentMemberId) {
+      params.delete('memberId');
+      hasChanges = true;
+    }
+
+    // Only update search params if there are actual changes
+    if (hasChanges) {
+      // Clear any existing timer
+      if (urlUpdateTimerRef.current) {
+        clearTimeout(urlUpdateTimerRef.current);
+      }
+
+      // Debounce URL updates to prevent rapid consecutive updates
+      urlUpdateTimerRef.current = setTimeout(() => {
+        setSearchParams(params);
+        urlUpdateTimerRef.current = null;
+      }, 300); // 300ms debounce
+    }
+
+    // Cleanup function
+    return () => {
+      if (urlUpdateTimerRef.current) {
+        clearTimeout(urlUpdateTimerRef.current);
+        urlUpdateTimerRef.current = null;
+      }
+    };
   }, [viewDate, viewType, familyMemberId, setSearchParams, searchParams]);
 
   // Fetch scores when date range or family member changes
-  const fetchScores = useCallback(async (): Promise<void> => {
-    if (!familyMemberId) {
-      setScores([]);
-      return;
-    }
+  const fetchScores = useCallback(
+    async (_force: boolean = false): Promise<void> => {
+      if (!familyMemberId) {
+        setScores([]);
+        return;
+      }
 
-    try {
-      const fetchedScores = await calendarData.fetchScoresForDateRange(
-        familyMemberId,
-        startDate,
-        endDate
-      );
-      setScores(fetchedScores);
-    } catch (error) {
-      console.error('Error fetching scores:', error);
-    }
-  }, [calendarData, familyMemberId, startDate, endDate]);
+      try {
+        const fetchedScores = await calendarData.fetchScoresForDateRange(
+          familyMemberId,
+          startDate,
+          endDate
+        );
+        setScores(fetchedScores);
+      } catch (error) {
+        console.error('Error fetching scores:', error);
+      }
+    },
+    [calendarData, familyMemberId, startDate, endDate]
+  );
 
   // Fetch scores when dependencies change
   useEffect(() => {
-    fetchScores();
-  }, [fetchScores]);
+    if (familyMemberId) {
+      fetchScores();
+    } else {
+      setScores([]);
+    }
+  }, [familyMemberId, startDate, endDate, fetchScores]);
 
   // Get score for a specific day
   const getScoreForDay = useCallback(
@@ -150,37 +214,69 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
       }
 
       try {
-        // Get the existing score if any
         const existingScore = getScoreForDay(date);
+        const formattedDate = format(date, 'yyyy-MM-dd');
 
-        // Get the budget cycle
-        const budgetCycleId = existingScore?.budget_cycle_id;
+        if (existingScore) {
+          // Update existing score
+          await calendarData.saveScore({
+            id: existingScore.id,
+            family_member_id: familyMemberId,
+            budget_cycle_id: existingScore.budget_cycle_id,
+            score,
+            date: formattedDate,
+            is_vacation: isVacation,
+            notes: notes || '',
+          });
+        } else {
+          // Get family member's family ID
+          const { data: memberData } = await supabase
+            .from('family_members')
+            .select('family_id')
+            .eq('id', familyMemberId)
+            .single();
 
-        if (!budgetCycleId) {
-          throw new Error('Budget cycle not found');
+          if (!memberData) {
+            throw new Error('Could not find family member');
+          }
+
+          // Get budget cycle
+          const { data: cycleData } = await supabase
+            .from('budget_cycles')
+            .select('*')
+            .eq('family_id', memberData.family_id)
+            .lte('start_date', formattedDate)
+            .gte('end_date', formattedDate)
+            .single();
+
+          if (!cycleData?.id) {
+            throw new Error('Could not find budget cycle');
+          }
+
+          // Save new score
+          await calendarData.saveScore({
+            family_member_id: familyMemberId,
+            budget_cycle_id: cycleData.id,
+            score,
+            date: formattedDate,
+            is_vacation: isVacation,
+            notes: notes || '',
+          });
         }
 
-        // Create the score input
-        const scoreInput = {
-          id: existingScore?.id,
-          family_member_id: familyMemberId,
-          budget_cycle_id: budgetCycleId,
-          score,
-          date: format(date, 'yyyy-MM-dd'),
-          is_vacation: isVacation,
-          notes: notes || '',
-        };
-
-        // Save the score
-        await calendarData.saveScore(scoreInput);
-
-        // Refresh scores
-        await fetchScores();
+        // Update scores immediately
+        const updatedScores = await calendarData.fetchScoresForDateRange(
+          familyMemberId,
+          startDate,
+          endDate
+        );
+        setScores(updatedScores);
       } catch (error) {
         console.error('Error saving score:', error);
+        throw error;
       }
     },
-    [calendarData, familyMemberId, getScoreForDay, fetchScores]
+    [calendarData, familyMemberId, getScoreForDay, startDate, endDate]
   );
 
   // Set vacation days for a date range
@@ -219,6 +315,15 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
     setViewDate(new Date());
   }, []);
 
+  // Create the context value with a more focused dependency array
+  // We need to ensure fetchScores doesn't cause unnecessary context updates
+  const fetchScoresStable = useCallback(
+    async (force?: boolean): Promise<void> => {
+      await fetchScores(force);
+    },
+    [fetchScores]
+  );
+
   // Create the context value
   const contextValue = useMemo(
     () => ({
@@ -238,7 +343,7 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
       goToPreviousPeriod,
       goToNextPeriod,
       goToToday,
-      fetchScores,
+      fetchScores: fetchScoresStable,
       saveScore,
       setVacationDays,
       getScoreForDay,
@@ -260,7 +365,7 @@ export function CalendarProvider({ children }: { children: ReactNode }): React.R
       goToPreviousPeriod,
       goToNextPeriod,
       goToToday,
-      fetchScores,
+      fetchScoresStable,
       saveScore,
       setVacationDays,
       getScoreForDay,

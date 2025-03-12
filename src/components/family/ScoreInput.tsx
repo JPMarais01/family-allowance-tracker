@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useAuth } from '../../hooks/use-auth';
 import { useFamilyData } from '../../hooks/use-family-data';
 import { toast } from '../../hooks/use-toast';
@@ -25,137 +25,92 @@ export function ScoreInput({
 }: ScoreInputProps): React.ReactElement {
   const { user } = useAuth();
   const familyData = useFamilyData(user);
+
+  // Form state
   const [score, setScore] = useState<number>(existingScore?.score || 3);
   const [isVacation, setIsVacation] = useState<boolean>(existingScore?.is_vacation || false);
   const [notes, setNotes] = useState<string>(existingScore?.notes || '');
+
+  // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [budgetCycleId, setBudgetCycleId] = useState<string | null>(
-    existingScore?.budget_cycle_id || null
-  );
-  const [loadingBudgetCycle, setLoadingBudgetCycle] = useState<boolean>(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const isFetchingCycleRef = useRef(false);
 
-  // Extract needed functions to avoid dependency issues
-  const { getFamilyByOwnerId, getBudgetCycleForDate, saveDailyScore, deleteDailyScore } =
-    familyData;
-
-  useEffect(() => {
-    const getBudgetCycle = async (): Promise<void> => {
-      if (!user || isFetchingCycleRef.current) {
-        return;
-      }
-
-      try {
-        isFetchingCycleRef.current = true;
-        setLoadingBudgetCycle(true);
-        setError(null);
-        const family = await getFamilyByOwnerId();
-        if (family) {
-          // Small delay to prevent UI flashing
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-          const budgetCycle = await getBudgetCycleForDate(family.id, date);
-          if (budgetCycle) {
-            setBudgetCycleId(budgetCycle.id);
-          } else {
-            console.error('Failed to get or create budget cycle');
-            setError('Unable to determine budget cycle. Please try again later.');
-          }
-        } else {
-          setError('Unable to find family information. Please try again later.');
-        }
-      } catch (error) {
-        console.error('Error getting budget cycle:', error);
-        setError(
-          'An error occurred while getting budget cycle information. Please try again later.'
-        );
-      } finally {
-        setLoadingBudgetCycle(false);
-        isFetchingCycleRef.current = false;
-      }
-    };
-
-    if (!budgetCycleId) {
-      getBudgetCycle();
-    }
-  }, [user, date, getFamilyByOwnerId, getBudgetCycleForDate, budgetCycleId]);
-
-  const handleSave = async (): Promise<void> => {
-    if (!budgetCycleId) {
-      // Try to get the budget cycle one more time before giving up
-      try {
-        setError(null);
-        setSaving(true);
-        const family = await getFamilyByOwnerId();
-        if (family) {
-          const budgetCycle = await getBudgetCycleForDate(family.id, date);
-          if (budgetCycle) {
-            setBudgetCycleId(budgetCycle.id);
-            // Continue with save after setting the budget cycle ID
-            await saveScore(budgetCycle.id);
-            return;
-          } else {
-            console.error('Failed to get or create budget cycle on retry');
-          }
-        } else {
-          console.error('Failed to get family on retry');
-        }
-      } catch (error) {
-        console.error('Error getting budget cycle before save:', error);
-      } finally {
-        setSaving(false);
-      }
-
-      setError(
-        'Unable to determine budget cycle. Please try refreshing the page and trying again.'
-      );
+  // Handle save
+  const handleSave = useCallback(async (): Promise<void> => {
+    if (!user || !familyMemberId || !date) {
+      setError('Missing required data for save');
       return;
     }
 
-    await saveScore(budgetCycleId);
-  };
+    // Set loading state
+    setSaving(true);
+    setError(null);
 
-  const saveScore = async (cycleId: string): Promise<void> => {
     try {
-      setSaving(true);
-      setError(null);
+      // Step 1: Get the family
+      const family = await familyData.getFamilyByOwnerId();
+      if (!family) {
+        setError('Unable to find family information');
+        setSaving(false);
+        return;
+      }
 
+      // Step 2: Get or create the budget cycle
+      const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
+      if (!budgetCycle) {
+        setError('Unable to determine budget cycle');
+        setSaving(false);
+        return;
+      }
+
+      // Step 3: Save the score
       const input: SaveDailyScoreInput = {
         id: existingScore?.id,
         family_member_id: familyMemberId,
-        budget_cycle_id: cycleId,
+        budget_cycle_id: budgetCycle.id,
         score,
         date: formatDate(date),
         is_vacation: isVacation,
         notes: notes || undefined,
       };
 
-      const result = await saveDailyScore(input);
+      const result = await familyData.saveDailyScore(input);
+
+      // Handle the result - force state update before calling onSaved
       if (result) {
+        // Show toast
         toast({
           title: existingScore ? 'Score Updated' : 'Score Added',
           description: `Successfully ${existingScore ? 'updated' : 'added'} score for ${formatDate(date)}.`,
         });
-        onSaved();
+        
+        // Deliberately reset the loading state before calling onSaved
+        setSaving(false);
+        
+        // Let the parent know we're done and it should refresh data
+        setTimeout(() => {
+          onSaved();
+        }, 0);
       } else {
         setError('Failed to save score. Please try again.');
+        setSaving(false);
       }
     } catch (error) {
       console.error('Error saving score:', error);
       setError('An error occurred while saving the score. Please try again.');
-    } finally {
       setSaving(false);
     }
-  };
+  }, [user, familyMemberId, date, score, isVacation, notes, existingScore, familyData, onSaved]);
 
+  // Handle delete
   const handleDelete = useCallback(() => {
     if (existingScore) {
       setShowDeleteConfirm(true);
     }
   }, [existingScore]);
 
+  // Handle delete confirmation
   const handleDeleteConfirmed = useCallback(async () => {
     if (!existingScore) {
       return;
@@ -166,29 +121,39 @@ export function ScoreInput({
       setError(null);
       setShowDeleteConfirm(false);
 
-      const success = await deleteDailyScore(existingScore.id);
+      const success = await familyData.deleteDailyScore(existingScore.id);
+
       if (success) {
+        // Show toast notification
         toast({
           title: 'Score Deleted',
           description: `Successfully deleted score for ${formatDate(date)}.`,
         });
-        onSaved();
+        
+        // Reset saving state before calling onSaved
+        setSaving(false);
+        
+        // Notify parent
+        setTimeout(() => {
+          onSaved();
+        }, 0);
       } else {
         setError('Failed to delete score. Please try again.');
+        setSaving(false);
       }
     } catch (error) {
       console.error('Error deleting score:', error);
       setError('An error occurred while deleting the score. Please try again.');
-    } finally {
       setSaving(false);
     }
-  }, [existingScore, date, deleteDailyScore, onSaved]);
+  }, [existingScore, date, familyData, onSaved]);
 
-  if (loadingBudgetCycle) {
+  // If we're in a loading state, show a spinner
+  if (saving) {
     return (
       <div className="text-center py-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p>Loading budget cycle information...</p>
+        <p>{existingScore ? 'Updating' : 'Creating'} score...</p>
       </div>
     );
   }
@@ -235,7 +200,7 @@ export function ScoreInput({
       </div>
 
       <div className="flex space-x-2">
-        <Button onClick={handleSave} disabled={saving || !!error || !budgetCycleId}>
+        <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Score'}
         </Button>
         {existingScore && (

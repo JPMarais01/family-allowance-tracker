@@ -9,7 +9,7 @@ import {
 } from 'date-fns';
 import { Umbrella } from 'lucide-react';
 import * as React from 'react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCalendar } from '../../hooks/use-calendar';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -45,6 +45,24 @@ export function CalendarGrid({
   const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date | null>(null);
   const [isBulkVacationModalOpen, setIsBulkVacationModalOpen] = useState(false);
 
+  // Add a ref to track the score change debounce timer
+  const scoreChangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Add a ref to track if the component is mounted
+  const isMountedRef = useRef(true);
+
+  // Set isMountedRef to false when component unmounts
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+
+      // Clear any pending timers on unmount
+      if (scoreChangeTimerRef.current) {
+        clearTimeout(scoreChangeTimerRef.current);
+        scoreChangeTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // Generate days for the calendar grid
   const calendarDays = React.useMemo(() => {
     // For month view, we need to include days from previous/next months to fill the grid
@@ -61,26 +79,57 @@ export function CalendarGrid({
   }, [startDate, endDate, viewType]);
 
   // Handle day selection
-  const handleDaySelect = (day: Date): void => {
-    onDateSelect(day);
-    setSelectedDayForDetail(day);
-    setIsDetailOpen(true);
-  };
+  const handleDaySelect = useCallback(
+    (day: Date): void => {
+      onDateSelect(day);
+      setSelectedDayForDetail(day);
+      setIsDetailOpen(true);
+    },
+    [onDateSelect]
+  );
 
   // Handle score change (refresh data)
-  const handleScoreChange = async (): Promise<void> => {
-    await fetchScores();
-  };
+  const handleScoreChange = useCallback((): void => {
+    if (!familyMemberId) {
+      return;
+    }
+
+    // Refresh calendar data directly
+    fetchScores(true).catch(error => {
+      console.error('Error refreshing scores:', error);
+    });
+  }, [familyMemberId, fetchScores]);
 
   // Handle opening the bulk vacation modal
-  const handleOpenBulkVacationModal = (): void => {
+  const handleOpenBulkVacationModal = useCallback((): void => {
     setIsBulkVacationModalOpen(true);
-  };
+  }, []);
 
   // Handle bulk vacation days set
-  const handleBulkVacationDaysSet = async (): Promise<void> => {
-    await fetchScores();
-  };
+  const handleBulkVacationDaysSet = useCallback(async (): Promise<void> => {
+    if (!isMountedRef.current || !familyMemberId) {
+      return;
+    }
+
+    // Clear any existing timer
+    if (scoreChangeTimerRef.current) {
+      clearTimeout(scoreChangeTimerRef.current);
+      scoreChangeTimerRef.current = null;
+    }
+
+    // Set a debounce timer to prevent rapid consecutive calls
+    scoreChangeTimerRef.current = setTimeout(async () => {
+      try {
+        if (isMountedRef.current) {
+          await fetchScores();
+        }
+      } finally {
+        if (isMountedRef.current) {
+          scoreChangeTimerRef.current = null;
+        }
+      }
+    }, 300); // 300ms debounce
+  }, [familyMemberId, fetchScores]);
 
   return (
     <div className={cn('w-full', className)}>
