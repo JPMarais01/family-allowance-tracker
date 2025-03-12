@@ -50,7 +50,7 @@ export function CalendarDayDetail({
   const handleScoreSaved = useCallback(() => {
     // Refresh data first
     onScoreChange();
-    
+
     // Then close dialog
     onClose();
   }, [onScoreChange, onClose]);

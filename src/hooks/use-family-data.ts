@@ -585,7 +585,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         }
 
         if (input.id) {
-
           // Update existing score
           const { data, error } = await supabase
             .from('daily_scores')
@@ -610,7 +609,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
 
           return data;
         } else {
-
           // Create new score
           const { data, error } = await supabase
             .from('daily_scores')
@@ -675,7 +673,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
       currentDate: Date,
       cycleStartDay: number
     ): Promise<BudgetCycle | null> => {
-
       try {
         setLoading(true);
 
@@ -686,10 +683,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
 
         let startDate: Date;
         let endDate: Date;
-
-        // Handle future dates more carefully
-        const now = new Date();
-        const isFutureDate = currentDate > now;
 
         if (day >= cycleStartDay) {
           // We're in the current cycle that started in the current month
@@ -769,7 +762,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
   // Get the budget cycle for a specific date
   const getBudgetCycleForDate = useCallback(
     async (familyId: string, date: Date): Promise<BudgetCycle | null> => {
-
       try {
         setLoading(true);
         const formattedDate = formatDate(date);
@@ -786,7 +778,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
 
         if (error) {
           if (error.code === 'PGRST116') {
-
             // No budget cycle found, create one
             const settings = await getFamilySettings(familyId);
             if (!settings) {

@@ -84,10 +84,10 @@ export function ScoreInput({
           title: existingScore ? 'Score Updated' : 'Score Added',
           description: `Successfully ${existingScore ? 'updated' : 'added'} score for ${formatDate(date)}.`,
         });
-        
+
         // Deliberately reset the loading state before calling onSaved
         setSaving(false);
-        
+
         // Let the parent know we're done and it should refresh data
         setTimeout(() => {
           onSaved();
@@ -129,10 +129,10 @@ export function ScoreInput({
           title: 'Score Deleted',
           description: `Successfully deleted score for ${formatDate(date)}.`,
         });
-        
+
         // Reset saving state before calling onSaved
         setSaving(false);
-        
+
         // Notify parent
         setTimeout(() => {
           onSaved();
