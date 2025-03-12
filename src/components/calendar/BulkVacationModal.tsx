@@ -1,11 +1,9 @@
 import { format } from 'date-fns';
 import * as React from 'react';
 import { useState } from 'react';
-import { useAuth } from '../../hooks/use-auth';
-import { useFamilyData } from '../../hooks/use-family-data';
+import { useCalendar } from '../../hooks/use-calendar';
 import { toast } from '../../hooks/use-toast';
-import { SaveDailyScoreInput } from '../../lib/types';
-import { formatDate, getDateRange } from '../../lib/utils';
+import { getDateRange } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { DatePicker } from '../ui/date-picker';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -28,8 +26,7 @@ export function BulkVacationModal({
   defaultStartDate = new Date(),
   defaultEndDate = new Date(),
 }: BulkVacationModalProps): React.ReactElement {
-  const { user } = useAuth();
-  const familyData = useFamilyData(user);
+  const { setVacationDays, loading } = useCalendar();
 
   // State for date range
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);
@@ -56,6 +53,12 @@ export function BulkVacationModal({
     // Ensure end date is not before start date
     if (date >= startDate) {
       setEndDate(date);
+    } else {
+      toast({
+        title: 'Invalid Date Range',
+        description: 'End date cannot be before start date',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -66,146 +69,115 @@ export function BulkVacationModal({
       return;
     }
 
-    try {
-      setProcessing(true);
-      setError(null);
+    setProcessing(true);
+    setError(null);
 
+    try {
       // Get all dates in the range
       const dateRange = getDateRange(startDate, endDate);
 
-      // Get the budget cycle for the date range
-      const family = await familyData.getFamilyByOwnerId();
-      if (!family) {
-        throw new Error('Family not found');
+      if (dateRange.length === 0) {
+        throw new Error('Invalid date range');
       }
 
-      // Process each date in the range
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const date of dateRange) {
-        try {
-          // Get the budget cycle for this date
-          const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
-          if (!budgetCycle) {
-            errorCount++;
-            continue;
-          }
-
-          // Check if a score already exists for this date
-          const existingScore = await familyData.getDailyScore(familyMemberId, date);
-
-          // Prepare the input for saving the score
-          const input: SaveDailyScoreInput = {
-            id: existingScore?.id,
-            family_member_id: familyMemberId,
-            budget_cycle_id: budgetCycle.id,
-            // Use existing score or default to 3
-            score: existingScore?.score || 3,
-            date: formatDate(date),
-            is_vacation: setAsVacation,
-            notes: existingScore?.notes || undefined,
-          };
-
-          // Save the score
-          const result = await familyData.saveDailyScore(input);
-          if (result) {
-            successCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (error) {
-          console.error(`Error processing date ${formatDate(date)}:`, error);
-          errorCount++;
-        }
+      if (dateRange.length > 60) {
+        throw new Error('Date range too large (maximum 60 days)');
       }
+
+      // Set vacation days using the calendar context
+      await setVacationDays(startDate, endDate, setAsVacation);
 
       // Show success message
-      if (successCount > 0) {
-        toast({
-          title: setAsVacation ? 'Vacation Days Set' : 'Vacation Status Removed',
-          description: `Successfully ${setAsVacation ? 'set' : 'removed'} vacation status for ${successCount} day${successCount !== 1 ? 's' : ''}.`,
-        });
+      toast({
+        title: 'Success',
+        description: `${setAsVacation ? 'Set' : 'Unset'} vacation for ${dateRange.length} day${
+          dateRange.length === 1 ? '' : 's'
+        }`,
+      });
 
-        // Notify parent component
-        onVacationDaysSet();
+      // Call the callback
+      onVacationDaysSet();
 
-        // Close the modal
-        onClose();
-      }
-
-      // Show error message if any
-      if (errorCount > 0) {
-        setError(`Failed to process ${errorCount} day${errorCount !== 1 ? 's' : ''}.`);
-      }
-    } catch (error) {
-      console.error('Error setting vacation days:', error);
-      setError('An error occurred while setting vacation days. Please try again.');
+      // Close the modal
+      onClose();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set vacation days';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(false);
     }
   };
 
-  // Calculate the number of days in the range
-  const daysCount = getDateRange(startDate, endDate).length;
-
   return (
-    <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {setAsVacation ? 'Set Vacation Days' : 'Remove Vacation Status'}
-          </DialogTitle>
+          <DialogTitle>Manage Vacation Days</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-md">
-              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
-            </div>
-          )}
-
-          <div className="flex items-center space-x-2 mb-4">
-            <Switch checked={setAsVacation} onCheckedChange={setSetAsVacation} id="vacation-mode" />
-            <label htmlFor="vacation-mode" className="text-sm font-medium">
-              {setAsVacation ? 'Set as vacation days' : 'Remove vacation status'}
-            </label>
-          </div>
-
+        <div className="grid gap-4 py-4">
+          {/* Date range selection */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Start Date:</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Start Date</label>
               <DatePicker date={startDate} onDateChange={handleStartDateChange} />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">End Date:</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Date</label>
               <DatePicker date={endDate} onDateChange={handleEndDateChange} />
             </div>
           </div>
 
-          <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            This will {setAsVacation ? 'set' : 'remove'} vacation status for {daysCount} day
-            {daysCount !== 1 ? 's' : ''} from{' '}
-            <span className="font-medium">{format(startDate, 'MMM d, yyyy')}</span> to{' '}
-            <span className="font-medium">{format(endDate, 'MMM d, yyyy')}</span>.
+          {/* Vacation toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {setAsVacation ? 'Set as vacation days' : 'Remove vacation status'}
+            </span>
+            <Switch
+              checked={setAsVacation}
+              onCheckedChange={setSetAsVacation}
+              disabled={processing || loading}
+            />
           </div>
+
+          {/* Date range summary */}
+          <div className="text-sm text-muted-foreground">
+            {startDate && endDate ? (
+              <>
+                <p>
+                  {format(startDate, 'MMM d, yyyy')} to {format(endDate, 'MMM d, yyyy')}
+                </p>
+                <p className="mt-1">
+                  {getDateRange(startDate, endDate).length} day
+                  {getDateRange(startDate, endDate).length === 1 ? '' : 's'}
+                </p>
+              </>
+            ) : (
+              <p>Select a date range</p>
+            )}
+          </div>
+
+          {/* Error message */}
+          {error && <div className="text-sm text-red-500">{error}</div>}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={processing}>
+          <Button variant="outline" onClick={onClose} disabled={processing || loading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={processing}>
-            {processing ? (
+          <Button onClick={handleSubmit} disabled={processing || loading}>
+            {processing || loading ? (
               <>
                 <span className="mr-2">Processing...</span>
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
               </>
-            ) : setAsVacation ? (
-              'Set Vacation Days'
             ) : (
-              'Remove Vacation Status'
+              `${setAsVacation ? 'Set' : 'Remove'} Vacation Days`
             )}
           </Button>
         </DialogFooter>

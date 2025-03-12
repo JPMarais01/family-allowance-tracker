@@ -2,7 +2,6 @@ import {
   eachDayOfInterval,
   endOfWeek,
   format,
-  getDay,
   isSameDay,
   isSameMonth,
   isToday,
@@ -10,10 +9,8 @@ import {
 } from 'date-fns';
 import { Umbrella } from 'lucide-react';
 import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { useAuth } from '../../hooks/use-auth';
-import { useFamilyData } from '../../hooks/use-family-data';
-import { DailyScore } from '../../lib/types';
+import { useState } from 'react';
+import { useCalendar } from '../../hooks/use-calendar';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { BulkVacationModal } from './BulkVacationModal';
@@ -42,62 +39,26 @@ export function CalendarGrid({
   familyMemberId,
   className,
 }: CalendarGridProps): React.ReactElement {
-  const { user } = useAuth();
-  const familyData = useFamilyData(user);
-  const [scores, setScores] = useState<DailyScore[]>([]);
-  const [_loading, setLoading] = useState(false);
+  const { loading, fetchScores, getScoreForDay } = useCalendar();
+
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date | null>(null);
   const [isBulkVacationModalOpen, setIsBulkVacationModalOpen] = useState(false);
 
-  // Get days of the week for the header
-  const weekDays = eachDayOfInterval({
-    start: startOfWeek(new Date(), { weekStartsOn: 0 }),
-    end: endOfWeek(new Date(), { weekStartsOn: 0 }),
-  });
-
-  // Get all days to display in the calendar
+  // Generate days for the calendar grid
   const calendarDays = React.useMemo(() => {
-    return eachDayOfInterval({
-      start: startDate,
-      end: endDate,
-    });
-  }, [startDate, endDate]);
-
-  // Fetch scores when date range or family member changes
-  useEffect(() => {
-    if (user) {
-      fetchScores();
+    // For month view, we need to include days from previous/next months to fill the grid
+    if (viewType === 'month') {
+      // Get the first day of the grid (might be from previous month)
+      const start = startOfWeek(startDate, { weekStartsOn: 0 });
+      // Get the last day of the grid (might be from next month)
+      const end = endOfWeek(endDate, { weekStartsOn: 0 });
+      // Generate all days in the interval
+      return eachDayOfInterval({ start, end });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, familyMemberId, user]);
-
-  // Fetch scores for the visible date range
-  const fetchScores = async (): Promise<void> => {
-    if (!user) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      // Only fetch scores if a specific family member is selected
-      if (familyMemberId) {
-        const fetchedScores = await familyData.getDailyScores(familyMemberId, startDate, endDate);
-        setScores(fetchedScores);
-      } else {
-        setScores([]);
-      }
-    } catch (error) {
-      console.error('Error fetching scores:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Get score for a specific day
-  const getScoreForDay = (day: Date): DailyScore | undefined => {
-    return scores.find(score => isSameDay(new Date(score.date), day));
-  };
+    // For week view, just return the days in the week
+    return eachDayOfInterval({ start: startDate, end: endDate });
+  }, [startDate, endDate, viewType]);
 
   // Handle day selection
   const handleDaySelect = (day: Date): void => {
@@ -106,109 +67,99 @@ export function CalendarGrid({
     setIsDetailOpen(true);
   };
 
-  // Handle score change
+  // Handle score change (refresh data)
   const handleScoreChange = async (): Promise<void> => {
     await fetchScores();
   };
 
-  // Open bulk vacation modal
+  // Handle opening the bulk vacation modal
   const handleOpenBulkVacationModal = (): void => {
     setIsBulkVacationModalOpen(true);
   };
 
-  // Handle when bulk vacation days are set
+  // Handle bulk vacation days set
   const handleBulkVacationDaysSet = async (): Promise<void> => {
     await fetchScores();
   };
 
-  // Determine the grid layout based on view type
-  const gridClassName = viewType === 'month' ? 'grid-cols-7' : 'grid-cols-7';
-
   return (
-    <div className={cn('flex-1 overflow-auto', className)}>
-      <div className="h-full flex flex-col">
-        {/* Calendar header with day names and bulk vacation button */}
-        <div className="flex justify-between items-center mb-1">
-          <div className={cn('grid flex-1', gridClassName)}>
-            {weekDays.map(day => (
-              <div
-                key={day.toString()}
-                className="py-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
-              >
-                {format(day, 'EEE')}
-              </div>
-            ))}
-          </div>
-
-          {familyMemberId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-2 whitespace-nowrap"
-              onClick={handleOpenBulkVacationModal}
-            >
-              <Umbrella className="h-4 w-4 mr-2" />
-              Vacation Days
-            </Button>
-          )}
-        </div>
-
-        {/* Calendar grid with days */}
-        <div
-          className={cn(
-            'flex-1 grid',
-            gridClassName,
-            'grid-rows-auto gap-px bg-gray-200 dark:bg-gray-700'
-          )}
+    <div className={cn('w-full', className)}>
+      {/* Vacation button */}
+      <div className="mb-4 flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-1"
+          onClick={handleOpenBulkVacationModal}
+          disabled={!familyMemberId}
         >
-          {calendarDays.map(day => {
-            // For week view, only show days in the current week
-            if (viewType === 'week' && !isSameMonth(day, viewDate) && getDay(day) === 0) {
-              return null;
-            }
-
-            const dayScore = getScoreForDay(day);
-            const isCurrentMonth = isSameMonth(day, viewDate);
-
-            return (
-              <CalendarDay
-                key={day.toString()}
-                date={day}
-                isCurrentMonth={isCurrentMonth}
-                isSelected={selectedDate ? isSameDay(day, selectedDate) : false}
-                isToday={isToday(day)}
-                isVacation={dayScore?.is_vacation}
-                score={dayScore?.score}
-                notes={dayScore?.notes}
-                onSelect={() => handleDaySelect(day)}
-              />
-            );
-          })}
-        </div>
-
-        {/* Day detail modal */}
-        {selectedDayForDetail && (
-          <CalendarDayDetail
-            isOpen={isDetailOpen}
-            onClose={() => setIsDetailOpen(false)}
-            selectedDate={selectedDayForDetail}
-            familyMemberId={familyMemberId || ''}
-            onScoreChange={handleScoreChange}
-          />
-        )}
-
-        {/* Bulk vacation modal */}
-        {familyMemberId && (
-          <BulkVacationModal
-            isOpen={isBulkVacationModalOpen}
-            onClose={() => setIsBulkVacationModalOpen(false)}
-            familyMemberId={familyMemberId}
-            onVacationDaysSet={handleBulkVacationDaysSet}
-            defaultStartDate={startDate}
-            defaultEndDate={endDate}
-          />
-        )}
+          <Umbrella className="h-4 w-4" />
+          <span>Manage Vacation Days</span>
+        </Button>
       </div>
+
+      {/* Calendar grid */}
+      <div
+        className={cn(
+          'grid gap-1',
+          viewType === 'month' ? 'grid-cols-7' : 'grid-cols-7',
+          'auto-rows-fr'
+        )}
+      >
+        {/* Day headers */}
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div key={day} className="text-center font-medium text-muted-foreground p-2 text-sm">
+            {day}
+          </div>
+        ))}
+
+        {/* Calendar days */}
+        {calendarDays.map(day => {
+          const dayScore = getScoreForDay(day);
+          return (
+            <CalendarDay
+              key={format(day, 'yyyy-MM-dd')}
+              date={day}
+              isCurrentMonth={isSameMonth(day, viewDate)}
+              isSelected={selectedDate ? isSameDay(day, selectedDate) : false}
+              isToday={isToday(day)}
+              isVacation={dayScore?.is_vacation}
+              score={dayScore?.score}
+              notes={dayScore?.notes}
+              onSelect={() => handleDaySelect(day)}
+            />
+          );
+        })}
+      </div>
+
+      {/* Loading indicator */}
+      {loading && (
+        <div className="mt-4 text-center text-sm text-muted-foreground">Loading scores...</div>
+      )}
+
+      {/* Day detail modal */}
+      {selectedDayForDetail && (
+        <CalendarDayDetail
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          date={selectedDayForDetail}
+          familyMemberId={familyMemberId}
+          onScoreChange={handleScoreChange}
+          existingScore={selectedDayForDetail ? getScoreForDay(selectedDayForDetail) : undefined}
+        />
+      )}
+
+      {/* Bulk vacation modal */}
+      {familyMemberId && (
+        <BulkVacationModal
+          isOpen={isBulkVacationModalOpen}
+          onClose={() => setIsBulkVacationModalOpen(false)}
+          familyMemberId={familyMemberId}
+          onVacationDaysSet={handleBulkVacationDaysSet}
+          defaultStartDate={startDate}
+          defaultEndDate={endDate}
+        />
+      )}
     </div>
   );
 }
