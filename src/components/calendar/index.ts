@@ -1,3 +1,4 @@
+export * from './BulkVacationModal';
 export * from './CalendarContainer';
 export * from './CalendarDay';
 export * from './CalendarDayDetail';

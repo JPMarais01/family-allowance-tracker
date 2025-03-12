@@ -8,12 +8,15 @@ import {
   isToday,
   startOfWeek,
 } from 'date-fns';
+import { Umbrella } from 'lucide-react';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/use-auth';
 import { useFamilyData } from '../../hooks/use-family-data';
 import { DailyScore } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { Button } from '../ui/button';
+import { BulkVacationModal } from './BulkVacationModal';
 import { CalendarView } from './CalendarContainer';
 import { CalendarDay } from './CalendarDay';
 import { CalendarDayDetail } from './CalendarDayDetail';
@@ -45,6 +48,7 @@ export function CalendarGrid({
   const [_loading, setLoading] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date | null>(null);
+  const [isBulkVacationModalOpen, setIsBulkVacationModalOpen] = useState(false);
 
   // Get days of the week for the header
   const weekDays = eachDayOfInterval({
@@ -107,22 +111,46 @@ export function CalendarGrid({
     await fetchScores();
   };
 
+  // Open bulk vacation modal
+  const handleOpenBulkVacationModal = (): void => {
+    setIsBulkVacationModalOpen(true);
+  };
+
+  // Handle when bulk vacation days are set
+  const handleBulkVacationDaysSet = async (): Promise<void> => {
+    await fetchScores();
+  };
+
   // Determine the grid layout based on view type
   const gridClassName = viewType === 'month' ? 'grid-cols-7' : 'grid-cols-7';
 
   return (
     <div className={cn('flex-1 overflow-auto', className)}>
       <div className="h-full flex flex-col">
-        {/* Calendar header with day names */}
-        <div className={cn('grid', gridClassName)}>
-          {weekDays.map(day => (
-            <div
-              key={day.toString()}
-              className="py-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
+        {/* Calendar header with day names and bulk vacation button */}
+        <div className="flex justify-between items-center mb-1">
+          <div className={cn('grid flex-1', gridClassName)}>
+            {weekDays.map(day => (
+              <div
+                key={day.toString()}
+                className="py-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
+              >
+                {format(day, 'EEE')}
+              </div>
+            ))}
+          </div>
+
+          {familyMemberId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2 whitespace-nowrap"
+              onClick={handleOpenBulkVacationModal}
             >
-              {format(day, 'EEE')}
-            </div>
-          ))}
+              <Umbrella className="h-4 w-4 mr-2" />
+              Vacation Days
+            </Button>
+          )}
         </div>
 
         {/* Calendar grid with days */}
@@ -166,6 +194,18 @@ export function CalendarGrid({
             selectedDate={selectedDayForDetail}
             familyMemberId={familyMemberId || ''}
             onScoreChange={handleScoreChange}
+          />
+        )}
+
+        {/* Bulk vacation modal */}
+        {familyMemberId && (
+          <BulkVacationModal
+            isOpen={isBulkVacationModalOpen}
+            onClose={() => setIsBulkVacationModalOpen(false)}
+            familyMemberId={familyMemberId}
+            onVacationDaysSet={handleBulkVacationDaysSet}
+            defaultStartDate={startDate}
+            defaultEndDate={endDate}
           />
         )}
       </div>
