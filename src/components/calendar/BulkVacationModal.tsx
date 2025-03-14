@@ -1,9 +1,9 @@
 import { format } from 'date-fns';
 import * as React from 'react';
 import { useState } from 'react';
-import { useCalendar } from '../../hooks/use-calendar';
 import { toast } from '../../hooks/use-toast';
 import { getDateRange } from '../../lib/utils';
+import { useCalendarStore } from '../../stores/CalendarStore';
 import { Button } from '../ui/button';
 import { DatePicker } from '../ui/date-picker';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -26,7 +26,7 @@ export function BulkVacationModal({
   defaultStartDate = new Date(),
   defaultEndDate = new Date(),
 }: BulkVacationModalProps): React.ReactElement {
-  const { setVacationDays, loading } = useCalendar();
+  const { setVacationDays, loading } = useCalendarStore();
 
   // State for date range
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);

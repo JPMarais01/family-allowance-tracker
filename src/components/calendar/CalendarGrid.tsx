@@ -10,8 +10,8 @@ import {
 import { Umbrella } from 'lucide-react';
 import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useCalendar } from '../../hooks/use-calendar';
 import { cn } from '../../lib/utils';
+import { useCalendarStore } from '../../stores/CalendarStore';
 import { Button } from '../ui/button';
 import { BulkVacationModal } from './BulkVacationModal';
 import { CalendarView } from './CalendarContainer';
@@ -39,7 +39,7 @@ export function CalendarGrid({
   familyMemberId,
   className,
 }: CalendarGridProps): React.ReactElement {
-  const { loading, fetchScores, getScoreForDay } = useCalendar();
+  const { loading, fetchScores, getScoreForDay } = useCalendarStore();
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date | null>(null);

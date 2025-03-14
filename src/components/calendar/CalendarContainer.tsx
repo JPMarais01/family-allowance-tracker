@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { useEffect } from 'react';
-import { useCalendar } from '../../hooks/use-calendar';
 import { cn } from '../../lib/utils';
+import { useCalendarStore } from '../../stores/CalendarStore';
 import { CalendarGrid } from './CalendarGrid';
 import { CalendarHeader } from './CalendarHeader';
 
-export type CalendarView = 'month' | 'week';
+export type { CalendarView } from '../../stores/CalendarStore';
 
 interface CalendarContainerProps {
   selectedDate?: Date;
@@ -36,7 +36,7 @@ export function CalendarContainer({
     goToPreviousPeriod,
     goToNextPeriod,
     goToToday,
-  } = useCalendar();
+  } = useCalendarStore();
 
   // Sync external state with context state
   useEffect(() => {

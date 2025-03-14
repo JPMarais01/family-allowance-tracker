@@ -52,16 +52,14 @@ export function ScoreInput({
       const family = await familyData.getFamilyByOwnerId();
       if (!family) {
         setError('Unable to find family information');
-        setSaving(false);
-        return;
+        return; // Early return, no need to setSaving(false) again
       }
 
       // Step 2: Get or create the budget cycle
       const budgetCycle = await familyData.getBudgetCycleForDate(family.id, date);
       if (!budgetCycle) {
         setError('Unable to determine budget cycle');
-        setSaving(false);
-        return;
+        return; // Early return
       }
 
       // Step 3: Save the score
@@ -75,30 +73,36 @@ export function ScoreInput({
         notes: notes || undefined,
       };
 
+      // Assume saveDailyScore returns:
+      //  - { success: true, data?: any } on success
+      //  - { success: false, error: string } on failure
       const result = await familyData.saveDailyScore(input);
 
       // Handle the result - force state update before calling onSaved
-      if (result) {
+      if (result?.id) {
         // Show toast
         toast({
           title: existingScore ? 'Score Updated' : 'Score Added',
           description: `Successfully ${existingScore ? 'updated' : 'added'} score for ${formatDate(date)}.`,
         });
 
-        // Deliberately reset the loading state before calling onSaved
-        setSaving(false);
-
         // Let the parent know we're done and it should refresh data
         setTimeout(() => {
           onSaved();
         }, 0);
       } else {
-        setError('Failed to save score. Please try again.');
-        setSaving(false);
+        // More specific error handling
+        setError(result?.id || 'Failed to save score. Please try again.');
       }
     } catch (error) {
       console.error('Error saving score:', error);
-      setError('An error occurred while saving the score. Please try again.');
+      // Even more specific error handling, if possible
+      if (error instanceof Error) {
+        setError(`An error occurred: ${error.message}`);
+      } else {
+        setError('An unexpected error occurred while saving the score.');
+      }
+    } finally {
       setSaving(false);
     }
   }, [user, familyMemberId, date, score, isVacation, notes, existingScore, familyData, onSaved]);

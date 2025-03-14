@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { CalendarProvider } from '../../contexts/calendar-context';
 import { CalendarContainer } from './CalendarContainer';
 
 interface CalendarInterfaceProps {
@@ -8,7 +7,8 @@ interface CalendarInterfaceProps {
 
 /**
  * CalendarInterface component that serves as the main entry point for the calendar feature
- * This component is used in the Dashboard and wraps the CalendarContainer with the necessary context providers
+ * This component is used in the Dashboard and wraps the CalendarContainer
+ * Note: We've removed the CalendarProvider since we're now using the CalendarStore
  */
 export function CalendarInterface({ className }: CalendarInterfaceProps): React.ReactElement {
   return (
@@ -19,9 +19,7 @@ export function CalendarInterface({ className }: CalendarInterfaceProps): React.
         vacation days.
       </p>
 
-      <CalendarProvider>
-        <CalendarContainer className={className} />
-      </CalendarProvider>
+      <CalendarContainer className={className} />
     </div>
   );
 }

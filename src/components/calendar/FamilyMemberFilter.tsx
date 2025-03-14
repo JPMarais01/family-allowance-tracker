@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { useFamily } from '../../hooks/use-family';
 import { FamilyMember } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { useFamilyStore } from '../../stores/FamilyStore';
 
 interface FamilyMemberFilterProps {
   selectedMemberId?: string;
@@ -14,7 +14,15 @@ export function FamilyMemberFilter({
   onMemberSelect,
   className,
 }: FamilyMemberFilterProps): React.ReactElement {
-  const { familyMembers, loading } = useFamily();
+  const { familyMembers, loading, family, error } = useFamilyStore();
+
+  // Add more detailed logging
+  console.log('FamilyMemberFilter render:', {
+    familyMembers,
+    loading,
+    familyId: family?.id,
+    error,
+  });
 
   // Filter to only show children
   const childMembers = React.useMemo(

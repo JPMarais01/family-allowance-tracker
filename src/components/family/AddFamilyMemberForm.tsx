@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useFamily } from '../../hooks/use-family';
 import { AddFamilyMemberInput } from '../../lib/types';
+import { useFamilyStore } from '../../stores/FamilyStore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Spinner } from '../ui/spinner';
 
 export function AddFamilyMemberForm(): React.ReactElement {
-  const { addFamilyMember, loading } = useFamily();
+  const { addFamilyMember, loading } = useFamilyStore();
   const [formData, setFormData] = useState<AddFamilyMemberInput>({
     name: '',
     role: 'child',

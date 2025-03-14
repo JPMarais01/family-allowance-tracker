@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useCalendar } from '../../hooks/use-calendar';
 import { DailyScore } from '../../lib/types';
+import { useCalendarStore } from '../../stores/CalendarStore';
 import { ScoreDisplay } from '../family/ScoreDisplay';
 import { ScoreInput } from '../family/ScoreInput';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -24,7 +24,7 @@ export function CalendarDayDetail({
   existingScore,
 }: CalendarDayDetailProps): React.ReactElement | null {
   // Hooks
-  const { loading: calendarLoading } = useCalendar();
+  const { loading: calendarLoading } = useCalendarStore();
 
   // State
   const [score, setScore] = useState<DailyScore | null>(null);

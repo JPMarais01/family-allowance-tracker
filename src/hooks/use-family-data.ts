@@ -1,4 +1,4 @@
-import { User } from '@supabase/supabase-js';
+import { PostgrestError, User } from '@supabase/supabase-js';
 import { useCallback, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
@@ -26,6 +26,9 @@ type UseFamilyDataReturn = {
   updateFamilyMember: (input: UpdateFamilyMemberInput) => Promise<FamilyMember | null>;
   deleteFamilyMember: (memberId: string) => Promise<boolean>;
   getFamilySettings: (familyId: string) => Promise<FamilySettings | null>;
+  getFamilyMemberByUserId: (
+    userId: string
+  ) => Promise<{ data: FamilyMember | null; error: PostgrestError | null }>;
   // New score-related functions
   getDailyScores: (familyMemberId: string, startDate: Date, endDate: Date) => Promise<DailyScore[]>;
   getDailyScore: (familyMemberId: string, date: Date) => Promise<DailyScore | null>;
@@ -837,6 +840,33 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     [getFamilySettings, createBudgetCycle]
   );
 
+  const getFamilyMemberByUserId = useCallback(async (userId: string) => {
+    if (!userId) {
+      return { data: null, error: { message: 'User ID is required' } as PostgrestError };
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('family_members')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching family member:', error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error in getFamilyMemberByUserId:', error);
+      return { data: null, error: error as PostgrestError };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     getFamilyByOwnerId,
@@ -847,7 +877,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     updateFamilyMember,
     deleteFamilyMember,
     getFamilySettings,
-    // New score-related functions
+    getFamilyMemberByUserId,
     getDailyScores,
     getDailyScore,
     saveDailyScore,
