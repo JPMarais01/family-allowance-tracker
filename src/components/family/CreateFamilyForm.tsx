@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useFamily } from '../../hooks/use-family';
+import { useFamilyStore } from '../../stores/FamilyStore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Spinner } from '../ui/spinner';
 
 export function CreateFamilyForm(): React.ReactElement {
-  const { createFamily, loading } = useFamily();
+  const { createFamily, loading } = useFamilyStore();
   const [familyName, setFamilyName] = useState('');
   const [error, setError] = useState('');
 

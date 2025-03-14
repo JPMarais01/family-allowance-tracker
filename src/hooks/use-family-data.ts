@@ -1,4 +1,4 @@
-import { User } from '@supabase/supabase-js';
+import { PostgrestError, User } from '@supabase/supabase-js';
 import { useCallback, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
@@ -26,6 +26,9 @@ type UseFamilyDataReturn = {
   updateFamilyMember: (input: UpdateFamilyMemberInput) => Promise<FamilyMember | null>;
   deleteFamilyMember: (memberId: string) => Promise<boolean>;
   getFamilySettings: (familyId: string) => Promise<FamilySettings | null>;
+  getFamilyMemberByUserId: (
+    userId: string
+  ) => Promise<{ data: FamilyMember | null; error: PostgrestError | null }>;
   // New score-related functions
   getDailyScores: (familyMemberId: string, startDate: Date, endDate: Date) => Promise<DailyScore[]>;
   getDailyScore: (familyMemberId: string, date: Date) => Promise<DailyScore | null>;
@@ -469,6 +472,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
             return null;
           }
 
+          console.error('Error fetching family settings:', error);
           toast({
             title: 'Error',
             description: 'Failed to fetch family settings',
@@ -476,9 +480,9 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
           });
           return null;
         }
-
         return data;
-      } catch {
+      } catch (error) {
+        console.error('Unexpected error in getFamilySettings:', error);
         toast({
           title: 'Error',
           description: 'An unexpected error occurred',
@@ -606,10 +610,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
             return null;
           }
 
-          toast({
-            title: 'Success',
-            description: 'Daily score updated successfully',
-          });
           return data;
         } else {
           // Create new score
@@ -635,13 +635,11 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
             });
             return null;
           }
-
-          toast({
-            title: 'Success',
-            description: 'Daily score saved successfully',
-          });
           return data;
         }
+      } catch (error) {
+        console.error('Unexpected error in saveDailyScore:', error);
+        return null;
       } finally {
         setLoading(false);
       }
@@ -665,10 +663,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         return false;
       }
 
-      toast({
-        title: 'Success',
-        description: 'Daily score deleted successfully',
-      });
       return true;
     } finally {
       setLoading(false);
@@ -705,11 +699,14 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
           endDate = new Date(year, month, cycleStartDay - 1);
         }
 
-        // Handle month/year rollover for date calculations
-        // This ensures we get the correct date even when dealing with different month lengths
-        // or when the cycleStartDay might not exist in certain months (like 31 in February)
-        startDate = new Date(startDate);
-        endDate = new Date(endDate);
+        // Ensure dates are valid
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.error('Invalid date calculation:', { startDate, endDate });
+
+          // Fallback to a simpler calculation for the current month
+          startDate = new Date(year, month, 1); // First day of current month
+          endDate = new Date(year, month + 1, 0); // Last day of current month
+        }
 
         // Format dates for Supabase
         const formattedStartDate = formatDate(startDate);
@@ -773,6 +770,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
         const formattedDate = formatDate(date);
 
         // First, check if a budget cycle exists for this date
+
         const { data, error } = await supabase
           .from('budget_cycles')
           .select('*')
@@ -786,7 +784,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
             // No budget cycle found, create one
             const settings = await getFamilySettings(familyId);
             if (!settings) {
-              console.error('No family settings found');
+              console.error('No family settings found for family ID:', familyId);
               return null;
             }
 
@@ -807,7 +805,6 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
 
             // Verify the budget cycle was created successfully
             if (!newBudgetCycle) {
-              console.error('Failed to create new budget cycle');
               toast({
                 title: 'Error',
                 description: 'Failed to create new budget cycle',
@@ -827,10 +824,9 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
           });
           return null;
         }
-
         return data;
       } catch (error) {
-        console.error('Error in getBudgetCycleForDate:', error);
+        console.error('Unexpected error in getBudgetCycleForDate:', error);
         toast({
           title: 'Error',
           description: 'An unexpected error occurred while getting budget cycle',
@@ -844,6 +840,33 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     [getFamilySettings, createBudgetCycle]
   );
 
+  const getFamilyMemberByUserId = useCallback(async (userId: string) => {
+    if (!userId) {
+      return { data: null, error: { message: 'User ID is required' } as PostgrestError };
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('family_members')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching family member:', error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error in getFamilyMemberByUserId:', error);
+      return { data: null, error: error as PostgrestError };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     getFamilyByOwnerId,
@@ -854,7 +877,7 @@ export function useFamilyData(user: User | null = null): UseFamilyDataReturn {
     updateFamilyMember,
     deleteFamilyMember,
     getFamilySettings,
-    // New score-related functions
+    getFamilyMemberByUserId,
     getDailyScores,
     getDailyScore,
     saveDailyScore,

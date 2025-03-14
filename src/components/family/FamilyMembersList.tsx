@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useFamily } from '../../hooks/use-family';
 import { FamilyMember, UpdateFamilyMemberInput } from '../../lib/types';
+import { useFamilyStore } from '../../stores/FamilyStore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Spinner } from '../ui/spinner';
 import { InviteMember } from './InviteMember';
 
 export function FamilyMembersList(): React.ReactElement {
-  const { familyMembers, deleteFamilyMember, updateFamilyMember, loading } = useFamily();
+  const { familyMembers, deleteFamilyMember, updateFamilyMember, loading } = useFamilyStore();
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<UpdateFamilyMemberInput>({
     id: '',

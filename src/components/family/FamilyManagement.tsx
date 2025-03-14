@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/use-auth';
-import { useFamily } from '../../hooks/use-family';
+import { useFamilyStore } from '../../stores/FamilyStore';
 import { Spinner } from '../ui/spinner';
 import { AddFamilyMemberForm } from './AddFamilyMemberForm';
 import { CreateFamilyForm } from './CreateFamilyForm';
@@ -8,7 +8,7 @@ import { FamilyMembersList } from './FamilyMembersList';
 
 export function FamilyManagement(): React.ReactElement {
   const { user } = useAuth();
-  const { family, loading } = useFamily();
+  const { family, loading } = useFamilyStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'members'>('overview');
 
   // Add state to track if we've ever had family data
