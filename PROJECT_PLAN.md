@@ -184,14 +184,25 @@ family-allowance-tracker/
    - Support updating scores if they already exist for a particular date.
    - Invalidate and refetch relevant data upon score changes (using React Query).
 
-4. **Build Calendar Interface**
+4. **Build Calendar Interface** - COMPLETE
 
    - Display a full monthly or weekly calendar view for each child's scores.
    - Offer a click or tap-based UI to open a daily score input form.
    - Visually highlight vacation days and differentiate them from normal days.
    - Allow for bulk selection of vacation days.
 
-5. **Create Monthly Summary & Allowance Calculation**
+5. **Complete Context to Zustand Store Migration** [MODERATE]
+
+   - Migrate remaining React contexts to Zustand stores:
+     - Create ThemeStore to replace theme-context
+     - Create FormStore to replace form-contexts
+   - Ensure other contexts are fully migrated to Zustand stores
+   - Update all components using these contexts to use the new stores
+   - Ensure consistent state management patterns across the application
+   - Remove deprecated context files once migration is complete
+   - Test all functionality to ensure proper state management
+
+6. **Create Monthly Summary & Allowance Calculation**
 
    - Generate reports showing daily scores, average performance, and allowance calculations.
    - Implement budget cycle management (25th to 24th tracking periods).
