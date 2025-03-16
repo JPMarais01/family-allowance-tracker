@@ -16,7 +16,7 @@ import { DailyScore } from '../lib/types';
 
 export type CalendarView = 'month' | 'week';
 
-interface CalendarState {
+export interface CalendarState {
   // View state
   viewDate: Date;
   viewType: CalendarView;
@@ -30,11 +30,15 @@ interface CalendarState {
   loading: boolean;
   error: string | null;
 
+  // URL sync state
+  urlSyncEnabled: boolean;
+
   // Actions
   setViewDate: (date: Date) => void;
   setViewType: (type: CalendarView) => void;
   setSelectedDate: (date: Date | null) => void;
   setFamilyMemberId: (id: string | null) => void;
+  setUrlSyncEnabled: (enabled: boolean) => void;
 
   // Navigation
   goToPreviousPeriod: () => void;
@@ -45,6 +49,10 @@ interface CalendarState {
   fetchScores: (force?: boolean) => Promise<void>;
   saveScore: (score: number, date: Date, isVacation: boolean, notes?: string) => Promise<void>;
   setVacationDays: (startDate: Date, endDate: Date, isVacation: boolean) => Promise<void>;
+
+  // URL synchronization
+  syncWithUrl: (searchParams: URLSearchParams) => void;
+  getUrlParams: () => URLSearchParams;
 
   // Utility
   getScoreForDay: (day: Date) => DailyScore | undefined;
@@ -80,6 +88,7 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
     scores: [],
     loading: false,
     error: null,
+    urlSyncEnabled: true,
 
     // Actions
     setViewDate: (date: Date) => {
@@ -104,6 +113,8 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
       }
     },
 
+    setUrlSyncEnabled: (enabled: boolean) => set({ urlSyncEnabled: enabled }),
+
     // Navigation
     goToPreviousPeriod: () => {
       const { viewDate, viewType } = get();
@@ -122,6 +133,65 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
     goToToday: () => {
       get().setViewDate(new Date());
       get().fetchScores();
+    },
+
+    // URL synchronization
+    syncWithUrl: (searchParams: URLSearchParams) => {
+      const viewType = searchParams.get('view') as CalendarView;
+      const dateParam = searchParams.get('date');
+      const memberId = searchParams.get('memberId');
+
+      // Only update if values are different from current state
+      const currentState = get();
+      let stateChanged = false;
+
+      if (
+        viewType &&
+        viewType !== currentState.viewType &&
+        (viewType === 'month' || viewType === 'week')
+      ) {
+        stateChanged = true;
+        get().setViewType(viewType);
+      }
+
+      if (dateParam) {
+        try {
+          const date = new Date(dateParam);
+          if (
+            !isNaN(date.getTime()) &&
+            format(date, 'yyyy-MM-dd') !== format(currentState.viewDate, 'yyyy-MM-dd')
+          ) {
+            stateChanged = true;
+            get().setViewDate(date);
+          }
+        } catch (error) {
+          console.error('Invalid date in URL:', dateParam, error);
+        }
+      }
+
+      if (memberId !== currentState.familyMemberId) {
+        stateChanged = true;
+        get().setFamilyMemberId(memberId);
+      }
+
+      // Fetch scores if state changed
+      if (stateChanged && currentState.familyMemberId) {
+        get().fetchScores();
+      }
+    },
+
+    getUrlParams: () => {
+      const { viewType, viewDate, familyMemberId } = get();
+      const params = new URLSearchParams();
+
+      params.set('view', viewType);
+      params.set('date', format(viewDate, 'yyyy-MM-dd'));
+
+      if (familyMemberId) {
+        params.set('memberId', familyMemberId);
+      }
+
+      return params;
     },
 
     // Data operations
@@ -174,7 +244,7 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
         // Check if score exists for this date
         const { data: existingScore } = await supabase
           .from('daily_scores')
-          .select('id')
+          .select('id, budget_cycle_id')
           .eq('family_member_id', familyMemberId)
           .eq('date', formattedDate)
           .single();
@@ -183,21 +253,50 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
           // Update existing score
           const { error } = await supabase
             .from('daily_scores')
-            .update({ score, is_vacation: isVacation, notes })
+            .update({
+              score,
+              is_vacation: isVacation,
+              notes: notes || '',
+            })
             .eq('id', existingScore.id);
 
           if (error) {
             throw error;
           }
         } else {
-          // Insert new score
+          // Get family member's family ID
+          const { data: memberData, error: memberError } = await supabase
+            .from('family_members')
+            .select('family_id')
+            .eq('id', familyMemberId)
+            .single();
+
+          if (memberError || !memberData) {
+            throw new Error('Could not find family member');
+          }
+
+          // Get budget cycle
+          const { data: cycleData, error: cycleError } = await supabase
+            .from('budget_cycles')
+            .select('*')
+            .eq('family_id', memberData.family_id)
+            .lte('start_date', formattedDate)
+            .gte('end_date', formattedDate)
+            .single();
+
+          if (cycleError || !cycleData?.id) {
+            throw new Error('Could not find budget cycle for this date');
+          }
+
+          // Insert new score with budget cycle
           const { error } = await supabase.from('daily_scores').insert([
             {
               family_member_id: familyMemberId,
+              budget_cycle_id: cycleData.id,
               date: formattedDate,
               score,
               is_vacation: isVacation,
-              notes,
+              notes: notes || '',
             },
           ]);
 
@@ -258,20 +357,46 @@ export const useCalendarStore = create<CalendarState>()((set, get) => {
           }
         }
 
+        // Get family member's family ID for budget cycle lookup
+        const { data: memberData, error: memberError } = await supabase
+          .from('family_members')
+          .select('family_id')
+          .eq('id', familyMemberId)
+          .single();
+
+        if (memberError || !memberData) {
+          throw new Error('Could not find family member');
+        }
+
         // Insert new scores for dates that don't have them
         const newScores = [];
-        let currentDate = startDate;
+        let currentDate = new Date(startDate);
         while (currentDate <= endDate) {
           const dateStr = format(currentDate, 'yyyy-MM-dd');
           if (!existingDates.has(dateStr)) {
-            newScores.push({
-              family_member_id: familyMemberId,
-              date: dateStr,
-              score: 0,
-              is_vacation: isVacation,
-            });
+            // Get budget cycle for this date
+            const { data: cycleData } = await supabase
+              .from('budget_cycles')
+              .select('id')
+              .eq('family_id', memberData.family_id)
+              .lte('start_date', dateStr)
+              .gte('end_date', dateStr)
+              .single();
+
+            if (cycleData?.id) {
+              newScores.push({
+                family_member_id: familyMemberId,
+                budget_cycle_id: cycleData.id,
+                date: dateStr,
+                score: 0,
+                is_vacation: isVacation,
+                notes: '',
+              });
+            }
           }
-          currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+          // Move to next day
+          currentDate = new Date(currentDate);
+          currentDate.setDate(currentDate.getDate() + 1);
         }
 
         if (newScores.length > 0) {

@@ -3,7 +3,6 @@ import { Navigate, Route, HashRouter as Router, Routes } from 'react-router-dom'
 import './App.css';
 import { Provider } from './components/ui/provider';
 import { Toaster } from './components/ui/toaster';
-import { AuthProvider } from './contexts/auth-context';
 import { useAuth } from './hooks/use-auth';
 import { useFamilyStore } from './stores/FamilyStore';
 import { useUserStore } from './stores/UserStore';
@@ -74,9 +73,7 @@ function App(): React.ReactElement {
   return (
     <Provider>
       <Toaster />
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AppRoutes />
     </Provider>
   );
 }
