@@ -6,7 +6,6 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { ResetPassword } from './components/auth/ResetPassword';
 import { SignUp } from './components/auth/SignUp';
 import { Unauthorized } from './components/auth/Unauthorized';
-import { AuthProvider } from './contexts/auth-context'; // Import AuthProvider
 import { render, screen, waitFor } from './test/utils';
 
 // Mock react-router-dom
@@ -18,6 +17,19 @@ vi.mock('react-router-dom', async () => {
     useNavigate: vi.fn(),
   };
 });
+
+// Mock hooks
+vi.mock('./hooks/use-auth', () => ({
+  useAuth: () => ({
+    user: null,
+    familyMember: null,
+    loading: false,
+    signIn: vi.fn(),
+    signUp: vi.fn(),
+    signOut: vi.fn(),
+    resetPassword: vi.fn(),
+  }),
+}));
 
 // Mock components (simple placeholders)
 vi.mock('./components/auth/Login', () => ({
@@ -43,11 +55,6 @@ vi.mock('./components/auth/ProtectedRoute', () => ({
 
 const Dashboard = (): React.ReactElement => <div>Dashboard (Coming Soon)</div>;
 
-// Mock AuthProvider
-const MockAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <AuthProvider>{children}</AuthProvider>
-);
-
 describe('App Routing', () => {
   const mockedNavigate = vi.fn();
 
@@ -58,13 +65,11 @@ describe('App Routing', () => {
 
   it('renders Login component at /login', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/login']}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/login']}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -74,14 +79,12 @@ describe('App Routing', () => {
 
   it('redirects to /login from /', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/']}>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('Login Component')).toBeInTheDocument();
@@ -90,14 +93,12 @@ describe('App Routing', () => {
 
   it('redirects to /login from an unknown route', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/unknown']}>
-          <Routes>
-            <Route path="*" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/unknown']}>
+        <Routes>
+          <Route path="*" element={<Login />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('Login Component')).toBeInTheDocument();
@@ -106,13 +107,11 @@ describe('App Routing', () => {
 
   it('renders SignUp component at /signup', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/signup']}>
-          <Routes>
-            <Route path="/signup" element={<SignUp />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/signup']}>
+        <Routes>
+          <Route path="/signup" element={<SignUp />} />
+        </Routes>
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('SignUp Component')).toBeInTheDocument();
@@ -121,13 +120,11 @@ describe('App Routing', () => {
 
   it('renders ForgotPassword component at /forgot-password', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/forgot-password']}>
-          <Routes>
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/forgot-password']}>
+        <Routes>
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        </Routes>
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('ForgotPassword Component')).toBeInTheDocument();
@@ -136,13 +133,11 @@ describe('App Routing', () => {
 
   it('renders ResetPassword component at /reset-password', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/reset-password']}>
-          <Routes>
-            <Route path="/reset-password" element={<ResetPassword />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/reset-password']}>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Routes>
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('ResetPassword Component')).toBeInTheDocument();
@@ -151,13 +146,11 @@ describe('App Routing', () => {
 
   it('renders Unauthorized component at /unauthorized', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/unauthorized']}>
-          <Routes>
-            <Route path="/unauthorized" element={<Unauthorized />} />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/unauthorized']}>
+        <Routes>
+          <Route path="/unauthorized" element={<Unauthorized />} />
+        </Routes>
+      </MemoryRouter>
     );
     await waitFor(() => {
       expect(screen.getByText('Unauthorized Component')).toBeInTheDocument();
@@ -166,20 +159,18 @@ describe('App Routing', () => {
 
   it('renders Dashboard component at /dashboard', async () => {
     render(
-      <MockAuthProvider>
-        <MemoryRouter initialEntries={['/dashboard']}>
-          <Routes>
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </MemoryRouter>
-      </MockAuthProvider>
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
     );
     expect(await screen.findByText('Dashboard (Coming Soon)')).toBeInTheDocument();
   });

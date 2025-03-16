@@ -3,9 +3,9 @@ import { Slot } from '@radix-ui/react-slot';
 import * as React from 'react';
 import { Controller, ControllerProps, FieldPath, FieldValues, FormProvider } from 'react-hook-form';
 
-import { FormFieldContext, FormItemContext } from '../../contexts/form-contexts';
 import { useFormField } from '../../hooks/use-form-field';
 import { cn } from '../../lib/utils';
+import { useFormStore } from '../../stores/FormStore';
 import { Label } from './label';
 
 const Form = FormProvider;
@@ -16,22 +16,36 @@ const FormField = <
 >({
   ...props
 }: ControllerProps<TFieldValues, TName>): React.ReactElement => {
-  return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
-    </FormFieldContext.Provider>
-  );
+  const formStore = useFormStore();
+  const fieldId = React.useId();
+
+  // Register the field with the store
+  React.useEffect(() => {
+    formStore.registerField(fieldId, { name: props.name });
+
+    return () => {
+      formStore.unregisterField(fieldId);
+    };
+  }, [fieldId, formStore, props.name]);
+
+  return <Controller {...props} />;
 };
 
 const FormItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
+    const formStore = useFormStore();
     const id = React.useId();
 
-    return (
-      <FormItemContext.Provider value={{ id }}>
-        <div ref={ref} className={cn('space-y-2', className)} {...props} />
-      </FormItemContext.Provider>
-    );
+    // Register the item with the store
+    React.useEffect(() => {
+      formStore.registerItem(id, { id });
+
+      return () => {
+        formStore.unregisterItem(id);
+      };
+    }, [formStore, id]);
+
+    return <div ref={ref} className={cn('space-y-2', className)} {...props} />;
   }
 );
 FormItem.displayName = 'FormItem';
